@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gradient-to-br from-[#1a1333] via-[#2d1b4c] to-[#1a1333] min-h-screen text-white;
+  font-family: 'Inter', sans-serif;
+}
+
+.app-title {
+  @apply text-4xl md:text-5xl font-extrabold mb-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 text-transparent bg-clip-text;
+}
+.app-subtitle {
+  @apply text-lg md:text-xl font-semibold text-gray-300 mb-8;
+}
+
+.card {
+  @apply bg-[#232042] bg-opacity-90 rounded-3xl shadow-2xl p-8 min-w-[800px] min-h-[400px] mx-auto flex flex-col md:flex-row gap-8 items-center justify-center;
+}
+
+.transcript-area {
+  @apply bg-[#18162c] rounded-xl p-4 min-h-[180px] text-white w-full mb-4 border border-[#2d1b4c];
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:from-pink-500 hover:to-purple-500 transition;
+}
+
+.settings-row {
+  @apply flex gap-4 items-center mb-4;
+}
+
+/* Placeholder for robot image */
+.robot-img {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle at 60% 40%, #3b2e5a 60%, #18162c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 60px 10px #2d1b4c;
+  overflow: hidden;
+  border: 4px solid #3b2e5a;
+}
+.robot-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
