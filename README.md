@@ -25,7 +25,7 @@ AI-powered meeting assistant for recording, transcribing, and summarizing meetin
 
 ### 1. Clone the Repository
 ```sh
-git clone https://github.com/YOUR-USERNAME/minutemate.git
+git clone https://github.com/Pooja1517/Minute-Mate.git
 cd minutemate
 ```
 
