@@ -1,5 +1,8 @@
 import React, { useState, useRef } from "react";
 
+// API endpoints - can be changed for production
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -65,7 +68,7 @@ const AudioRecorder = ({ onUploadComplete }) => {
       return;
     }
     try {
-      const res = await fetch("http://localhost:5000/transcribe", {
+      const res = await fetch(`${API_BASE_URL}/transcribe`, {
         method: "POST",
         body: formData,
       });

@@ -156,6 +156,12 @@ npm start
 4. Copy the page ID from the URL
 5. Update your `.env` file with the token and page ID
 
+## 🚀 Live Demo
+
+- **Frontend**: [https://minute-mate-omega.vercel.app](https://minute-mate-omega.vercel.app) ✅ **LIVE**
+- **Backend**: [https://minute-mate.onrender.com](https://minute-mate.onrender.com) ✅ **LIVE**
+- **Whisper API**: [https://minute-mate-1.onrender.com](https://minute-mate-1.onrender.com) ✅ **LIVE**
+
 ## 🚀 Deployment
 
 ### Frontend Deployment (Vercel)
@@ -169,6 +175,13 @@ npm run build
 1. Connect your GitHub repository to Render
 2. Set environment variables in Render dashboard
 3. Deploy as a web service
+
+### Whisper API Deployment (Render)
+1. Create a new web service on Render
+2. Set Root Directory to project root
+3. Build Command: `pip install -r requirements-minimal.txt`
+4. Start Command: `python whisper_api_mock.py`
+5. Set environment variables if needed
 
 ### Environment Variables for Production
 ```env
@@ -192,7 +205,9 @@ minute-mate/
 │   ├── .env              # Environment variables
 │   └── package.json       # Backend dependencies
 ├── whisper_api.py         # Python Whisper API
+├── whisper_api_mock.py    # Mock API for deployment
 ├── requirements.txt       # Python dependencies
+├── requirements-minimal.txt # Minimal dependencies for deployment
 └── README.md             # This file
 ```
 
@@ -219,6 +234,11 @@ minute-mate/
 - Ensure audio quality is clear
 - Verify ffmpeg is properly installed
 
+#### "Whisper API deployment failed"
+- Use `requirements-minimal.txt` for Render deployment
+- Use `whisper_api_mock.py` for lightweight deployment
+- Check Render logs for specific error messages
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -238,6 +258,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Google Cloud** - For OAuth2 and Docs API
 - **Notion** - For workspace integration
 - **React & Tailwind** - For modern UI development
+- **Vercel** - For frontend hosting
+- **Render** - For backend and API hosting
 
 ## 📞 Support
 
@@ -249,4 +271,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ by Pooja Galigoudar
 
-*Phase 2 - AI Summary, Action Items & Export Integration*
+*Phase 2 - AI Summary, Action Items & Export Integration* ✅ **COMPLETED**

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 
+// API endpoints - can be changed for production
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 const TranscriptDashboard = ({ data }) => {
   const [exportStatus, setExportStatus] = useState("");
 
@@ -35,7 +38,7 @@ const TranscriptDashboard = ({ data }) => {
 
   const handleOAuthCallback = async (code) => {
     try {
-      const res = await fetch(`http://localhost:5000/auth/google/callback?code=${code}`);
+      const res = await fetch(`${API_BASE_URL}/auth/google/callback?code=${code}`);
       const { tokens } = await res.json();
       localStorage.setItem('googleTokens', JSON.stringify(tokens));
       setExportStatus('Google authentication successful! ✅');
@@ -47,7 +50,7 @@ const TranscriptDashboard = ({ data }) => {
   const handleExportNotion = async () => {
     setExportStatus("Exporting to Notion...");
     try {
-      const res = await fetch("http://localhost:5000/export/notion", {
+      const res = await fetch(`${API_BASE_URL}/export/notion`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,7 +101,7 @@ const TranscriptDashboard = ({ data }) => {
   // Google Docs OAuth and export logic
   const handleGoogleAuth = async () => {
     try {
-      const res = await fetch('http://localhost:5000/auth/google');
+      const res = await fetch(`${API_BASE_URL}/auth/google`);
       const { url } = await res.json();
       window.location.href = url;
     } catch (err) {
@@ -115,7 +118,7 @@ const TranscriptDashboard = ({ data }) => {
     }
     setExportStatus('Exporting to Google Docs...');
     try {
-      const res = await fetch('http://localhost:5000/export/googledocs', {
+      const res = await fetch(`${API_BASE_URL}/export/googledocs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ summary: data.summary, actions: data.actions, tokens }),

@@ -3,6 +3,10 @@ import AudioRecorder from "./components/AudioRecorder";
 import TranscriptDashboard from "./components/TranscriptDashboard";
 import "./index.css";
 
+// API endpoints - can be changed for production
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const WHISPER_API_URL = process.env.REACT_APP_WHISPER_API_URL || "http://localhost:5001";
+
 function App() {
   const [result, setResult] = useState(null);
 
@@ -12,7 +16,7 @@ function App() {
       // If transcript is present, call summarize endpoint
       console.log("Transcription complete, sending to summarize:", data.text);
       try {
-        const res = await fetch("http://localhost:5001/summarize", {
+        const res = await fetch(`${WHISPER_API_URL}/summarize`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcript: data.text }),

@@ -43,7 +43,7 @@ const credentials = {
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "client_secret": process.env.GOOGLE_CLIENT_SECRET || "your-google-client-secret-here",
-    "redirect_uris": ["http://localhost:5000/auth/google/callback"]
+    "redirect_uris": [process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/auth/google/callback"]
   }
 };
 const { client_id, client_secret, redirect_uris } = credentials.web;
@@ -67,10 +67,12 @@ app.get('/auth/google/callback', async (req, res) => {
     
     // Redirect back to frontend with tokens
     const tokenParam = encodeURIComponent(JSON.stringify(tokens));
-    res.redirect(`http://localhost:3000?tokens=${tokenParam}`);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    res.redirect(`${frontendUrl}?tokens=${tokenParam}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`http://localhost:3000?error=oauth_failed`);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    res.redirect(`${frontendUrl}?error=oauth_failed`);
   }
 });
 
