@@ -1,7 +1,48 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const TranscriptDashboard = ({ data }) => {
   const [exportStatus, setExportStatus] = useState("");
+
+  // Check for OAuth callback on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const tokens = urlParams.get('tokens');
+    const error = urlParams.get('error');
+    
+    if (tokens) {
+      // Handle OAuth callback with tokens
+      try {
+        const parsedTokens = JSON.parse(decodeURIComponent(tokens));
+        localStorage.setItem('googleTokens', JSON.stringify(parsedTokens));
+        setExportStatus('Google authentication successful! ✅');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (err) {
+        setExportStatus('Failed to parse Google tokens ❌');
+      }
+    } else if (code) {
+      // Handle OAuth callback with code (legacy)
+      handleOAuthCallback(code);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+      setExportStatus('Google authentication failed ❌');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleOAuthCallback = async (code) => {
+    try {
+      const res = await fetch(`http://localhost:5000/auth/google/callback?code=${code}`);
+      const { tokens } = await res.json();
+      localStorage.setItem('googleTokens', JSON.stringify(tokens));
+      setExportStatus('Google authentication successful! ✅');
+    } catch (err) {
+      setExportStatus('Google authentication failed ❌');
+    }
+  };
 
   const handleExportNotion = async () => {
     setExportStatus("Exporting to Notion...");
@@ -17,34 +58,89 @@ const TranscriptDashboard = ({ data }) => {
       });
       const result = await res.json();
       if (result.success) {
-        setExportStatus("Exported to Notion successfully ✅");
+        if (result.pageUrl) {
+          setExportStatus(
+            <span>
+              Exported to Notion successfully ✅ -{' '}
+              <a 
+                href={result.pageUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                View Page
+              </a>
+            </span>
+          );
+        } else {
+          setExportStatus("Exported to Notion successfully ✅");
+        }
       } else {
-        setExportStatus("Failed to export to Notion ❌");
+        if (result.setupInstructions) {
+          setExportStatus(
+            <span className="text-red-600">
+              Notion Setup Required ❌ - {result.error}
+              <br />
+              <span className="text-sm text-gray-400 mt-1 block">
+                {result.setupInstructions}
+              </span>
+            </span>
+          );
+        } else {
+          setExportStatus("Failed to export to Notion ❌ - " + (result.error || result.details || "Unknown error"));
+        }
       }
     } catch (err) {
-      setExportStatus("Failed to export to Notion ❌");
+      setExportStatus("Failed to export to Notion ❌ - Network error");
     }
   };
-  const handleExportGoogle = async () => {
-    setExportStatus("Exporting to Google Docs...");
+
+  // Google Docs OAuth and export logic
+  const handleGoogleAuth = async () => {
     try {
-      const res = await fetch("http://localhost:5000/export/googledocs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript: data.transcript,
-          summary: data.summary,
-          actions: data.actions,
-        }),
+      const res = await fetch('http://localhost:5000/auth/google');
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      setExportStatus('Failed to start Google authentication ❌');
+    }
+  };
+
+  const handleExportGoogleDocs = async () => {
+    const tokens = JSON.parse(localStorage.getItem('googleTokens'));
+    if (!tokens) {
+      setExportStatus('Please sign in with Google first!');
+      await handleGoogleAuth();
+      return;
+    }
+    setExportStatus('Exporting to Google Docs...');
+    try {
+      const res = await fetch('http://localhost:5000/export/googledocs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: data.summary, actions: data.actions, tokens }),
       });
       const result = await res.json();
       if (result.success) {
-        setExportStatus("Exported to Google Docs successfully ✅");
+        const docUrl = `https://docs.google.com/document/d/${result.docId}/edit`;
+        setExportStatus(
+          <span>
+            Exported to Google Docs! ✅{' '}
+            <a 
+              href={docUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              View Document
+            </a>
+          </span>
+        );
       } else {
-        setExportStatus("Failed to export to Google Docs ❌");
+        setExportStatus('Failed to export to Google Docs: ' + result.error);
       }
     } catch (err) {
-      setExportStatus("Failed to export to Google Docs ❌");
+      setExportStatus('Failed to export to Google Docs ❌');
     }
   };
 
@@ -72,11 +168,21 @@ const TranscriptDashboard = ({ data }) => {
             <button className="btn bg-black hover:bg-gray-800" onClick={handleExportNotion}>
               🗂 Export to Notion
             </button>
-            <button className="btn bg-blue-700 hover:bg-blue-800" onClick={handleExportGoogle}>
+            <button className="btn bg-blue-700 hover:bg-blue-800" onClick={handleExportGoogleDocs}>
               📄 Export to Google Docs
             </button>
           </div>
-          {exportStatus && <div className={`font-medium mt-2 ${exportStatus.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>{exportStatus}</div>}
+          {exportStatus && (
+            <div className={`font-medium mt-2 ${
+              typeof exportStatus === 'string' && exportStatus.includes('successfully') 
+                ? 'text-green-600' 
+                : typeof exportStatus === 'string' && exportStatus.includes('❌') 
+                ? 'text-red-600' 
+                : 'text-green-600'
+            }`}>
+              {exportStatus}
+            </div>
+          )}
         </>
       )}
     </div>

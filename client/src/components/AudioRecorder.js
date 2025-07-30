@@ -70,7 +70,14 @@ const AudioRecorder = ({ onUploadComplete }) => {
         body: formData,
       });
       const data = await res.json();
-      onUploadComplete(data);
+      console.log("Transcription result:", data);
+      if (data.text) {
+        onUploadComplete({ text: data.text });
+      } else if (data.transcript) {
+        onUploadComplete({ text: data.transcript });
+      } else {
+        onUploadComplete({ error: "No transcript received from backend." });
+      }
     } catch (err) {
       onUploadComplete({ error: "Transcription failed. Please try again." });
     } finally {
