@@ -2,6 +2,10 @@
 
 An intelligent meeting assistant that records, transcribes, summarizes, and exports meeting notes using AI.
 
+![MinuteMate UI](client/public/Screenshot.png)
+
+*Beautiful, intuitive interface with AI-powered transcription and export capabilities*
+
 ## 🚀 Features
 
 ### Core Functionality
@@ -161,6 +165,13 @@ npm start
 - **Frontend**: [https://minute-mate-omega.vercel.app](https://minute-mate-omega.vercel.app) ✅ **LIVE**
 - **Backend**: [https://minute-mate.onrender.com](https://minute-mate.onrender.com) ✅ **LIVE**
 - **Whisper API**: [https://minute-mate-1.onrender.com](https://minute-mate-1.onrender.com) ✅ **LIVE**
+
+### 🎯 Try It Now!
+Visit [https://minute-mate-omega.vercel.app](https://minute-mate-omega.vercel.app) to:
+- 🎤 Record or upload audio files
+- 🧠 Get AI-powered transcription and summaries
+- ✅ Extract action items automatically
+- 📄 Export to Google Docs or Notion
 
 ## 🚀 Deployment
 
