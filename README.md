@@ -241,12 +241,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/minute-mate/issues)
-- **Email**: your.email@example.com
-- **Documentation**: [Wiki](https://github.com/yourusername/minute-mate/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Pooja1517/minute-mate/issues)
+- **Email**: poojagaligoudar@gmail.com
+- **Documentation**: [Wiki](https://github.com/Pooja1517/minute-mate/wiki)
 
 ---
 
-**Built with ❤️ by [Your Name]**
+**Built with ❤️ by Pooja Galigoudar
 
 *Phase 2 - AI Summary, Action Items & Export Integration*
