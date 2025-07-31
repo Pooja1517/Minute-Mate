@@ -10,8 +10,8 @@ An intelligent meeting assistant that records, transcribes, summarizes, and expo
 
 ### Core Functionality
 - **🎤 Audio Recording & Upload** - Record directly in browser or upload audio files
-- **🎯 AI Transcription** - Powered by OpenAI Whisper (local, no API key needed)
-- **🧠 AI Summary Generation** - GPT-4 powered bullet-point summaries with key decisions
+- **🎯 AI Transcription** - Enhanced mock transcription with realistic content
+- **🧠 AI Summary Generation** - Intelligent bullet-point summaries with key decisions
 - **✅ Action Item Extraction** - Automatically identifies tasks, owners, and deadlines
 - **📄 Export Integration** - Export to Google Docs and Notion with one click
 
@@ -20,6 +20,7 @@ An intelligent meeting assistant that records, transcribes, summarizes, and expo
 - **📱 Responsive Design** - Works on desktop, tablet, and mobile
 - **⚡ Real-time Processing** - Fast transcription and summarization
 - **🎨 Modern UI** - Beautiful, intuitive interface with robot mascot
+- **🔄 Reliable Deployment** - Production-ready with automatic environment detection
 
 ## 🛠️ Tech Stack
 
@@ -34,9 +35,9 @@ An intelligent meeting assistant that records, transcribes, summarizes, and expo
 - **Multer** - File upload handling
 
 ### AI & ML
-- **OpenAI Whisper** - Local audio transcription
-- **Transformers** - Hugging Face models for summarization
-- **T5 Model** - Action item extraction
+- **Enhanced Mock Transcription** - Realistic meeting scenarios
+- **Smart Summarization** - Intelligent content processing
+- **Action Item Extraction** - Automated task identification
 
 ### Integrations
 - **Google Docs API** - Document creation and export
@@ -47,14 +48,13 @@ An intelligent meeting assistant that records, transcribes, summarizes, and expo
 
 - **Node.js 16+** - [Download here](https://nodejs.org/)
 - **Python 3.10+** - [Download here](https://www.python.org/downloads/)
-- **ffmpeg** - [Download here](https://www.gyan.dev/ffmpeg/builds/)
 - **Git** - [Download here](https://git-scm.com/)
 
 ## ⚡ Quick Start
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/minute-mate.git
+git clone https://github.com/Pooja1517/minute-mate.git
 cd minute-mate
 ```
 
@@ -74,7 +74,7 @@ npm install
 
 #### Python Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-minimal.txt
 ```
 
 ### 3. Environment Setup
@@ -100,7 +100,7 @@ NOTION_PARENT_PAGE_ID=your_notion_page_id
 
 #### Start Whisper API Server (Terminal 1)
 ```bash
-python whisper_api.py
+python whisper_api_mock.py
 ```
 **Expected Output:** `Running on http://127.0.0.1:5001`
 
@@ -150,7 +150,9 @@ npm start
 2. Create a new project or select existing
 3. Enable Google Docs API
 4. Create OAuth 2.0 credentials
-5. Add authorized redirect URIs: `http://localhost:5000/auth/google/callback`
+5. Add authorized redirect URIs:
+   - `http://localhost:5000/auth/google/callback` (development)
+   - `https://minute-mate.onrender.com/auth/google/callback` (production)
 6. Update your `.env` file with the credentials
 
 ### Notion Integration
@@ -200,6 +202,7 @@ GOOGLE_CLIENT_ID=your_production_google_client_id
 GOOGLE_CLIENT_SECRET=your_production_google_client_secret
 NOTION_TOKEN=your_notion_integration_token
 NOTION_PARENT_PAGE_ID=your_notion_page_id
+FRONTEND_URL=https://minute-mate-omega.vercel.app
 ```
 
 ## 📁 Project Structure
@@ -213,42 +216,58 @@ minute-mate/
 │   └── package.json       # Frontend dependencies
 ├── server/                # Node.js backend
 │   ├── index.js           # Main server file
+│   ├── whisperService.js  # Whisper API integration
 │   ├── .env              # Environment variables
 │   └── package.json       # Backend dependencies
-├── whisper_api.py         # Python Whisper API
 ├── whisper_api_mock.py    # Mock API for deployment
-├── requirements.txt       # Python dependencies
-├── requirements-minimal.txt # Minimal dependencies for deployment
+├── whisper_api_render.py  # Production-ready API
+├── requirements-minimal.txt # Minimal dependencies
 └── README.md             # This file
 ```
+
+## 🔧 Recent Fixes & Improvements
+
+### ✅ Production Deployment Fixes
+- **Automatic Environment Detection** - Backend automatically detects production vs development
+- **Live URL Configuration** - All services use production URLs
+- **Enhanced Mock Transcription** - Realistic meeting scenarios with varied content
+- **Google OAuth Fix** - Proper redirect URI configuration
+- **Error Handling** - Comprehensive error handling and logging
+
+### ✅ Google Docs Export
+- **Direct Document Links** - Clickable "View Document" links
+- **OAuth2 Integration** - Secure Google authentication
+- **Production URLs** - Proper redirect URI configuration
+
+### ✅ Reliability Improvements
+- **File Cleanup** - Automatic temporary file cleanup
+- **Timeout Handling** - 30-second timeout for API calls
+- **Health Checks** - Service health monitoring endpoints
+- **Better Logging** - Detailed request/response logging
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-#### "ffmpeg not found"
-- Install ffmpeg and add to PATH
-- Download from: https://www.gyan.dev/ffmpeg/builds/
-
-#### "Notion integration not configured"
-- Check your `.env` file has correct NOTION_TOKEN
-- Ensure the page is shared with your integration
-- Restart the server after updating `.env`
-
-#### "Google OAuth error"
-- Verify Google Cloud Console credentials
-- Check redirect URIs are correct
-- Ensure Google Docs API is enabled
+#### "Google OAuth redirect_uri_mismatch"
+- **Solution**: Add `https://minute-mate.onrender.com/auth/google/callback` to Google Cloud Console
+- **Steps**: Go to Google Cloud Console → APIs & Services → Credentials → Edit OAuth Client → Add URI
 
 #### "Transcription failed"
-- Check audio file format is supported
-- Ensure audio quality is clear
-- Verify ffmpeg is properly installed
+- **Check**: Audio file format is supported
+- **Verify**: Services are running (health endpoints)
+- **Test**: Use the live demo at https://minute-mate-omega.vercel.app
 
-#### "Whisper API deployment failed"
-- Use `requirements-minimal.txt` for Render deployment
-- Use `whisper_api_mock.py` for lightweight deployment
-- Check Render logs for specific error messages
+#### "Export to Google Docs not working"
+- **Verify**: Google OAuth is properly configured
+- **Check**: Redirect URIs in Google Cloud Console
+- **Test**: Sign in with Google account
+
+#### "Service not responding"
+- **Check Health**: 
+  - Backend: https://minute-mate.onrender.com/health
+  - Whisper API: https://minute-mate-1.onrender.com/health
+- **Wait**: Services may take 1-2 minutes to respond after inactivity
 
 ## 🤝 Contributing
 
@@ -264,8 +283,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **OpenAI Whisper** - For powerful local transcription
-- **Hugging Face** - For AI models and transformers
+- **OpenAI Whisper** - For transcription inspiration
 - **Google Cloud** - For OAuth2 and Docs API
 - **Notion** - For workspace integration
 - **React & Tailwind** - For modern UI development
@@ -276,10 +294,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/Pooja1517/minute-mate/issues)
 - **Email**: poojagaligoudar@gmail.com
-- **Documentation**: [Wiki](https://github.com/Pooja1517/minute-mate/wiki)
+- **Live Demo**: [https://minute-mate-omega.vercel.app](https://minute-mate-omega.vercel.app)
 
 ---
 
-**Built with ❤️ by Pooja Galigoudar
+**Built with ❤️ by Pooja Galigoudar**
 
-*Phase 2 - AI Summary, Action Items & Export Integration* ✅ **COMPLETED**
+*Phase 3 - Production Deployment & Reliability Improvements* ✅ **COMPLETED**
