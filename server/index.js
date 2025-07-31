@@ -96,7 +96,8 @@ app.get('/auth/google', (req, res) => {
     scope: ['https://www.googleapis.com/auth/documents'],
     prompt: 'consent', // Force consent to get refresh token
     include_granted_scopes: true,
-    response_type: 'code'
+    response_type: 'code',
+    approval_prompt: 'force' // Force approval to get refresh token
   });
   console.log('Generated auth URL:', authUrl);
   res.json({ url: authUrl });
@@ -160,29 +161,22 @@ app.post('/export/googledocs', async (req, res) => {
   }
   
   try {
-    oAuth2Client.setCredentials(tokens);
+    // Create a new OAuth2Client instance for this request
+    const requestOAuth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.NODE_ENV === 'development' ? "http://localhost:5000/auth/google/callback" : "https://minute-mate.onrender.com/auth/google/callback"
+    );
     
-    // Check if access token is expired
-    const now = Date.now();
-    if (tokens.expiry_date && now >= tokens.expiry_date) {
-      console.log('Access token expired, attempting refresh...');
-      if (tokens.refresh_token) {
-        try {
-          const { credentials } = await oAuth2Client.refreshAccessToken();
-          console.log('✅ Token refreshed successfully');
-          oAuth2Client.setCredentials(credentials);
-        } catch (refreshError) {
-          console.warn('Token refresh failed:', refreshError.message);
-          // Continue with original tokens - they might still work
-        }
-      } else {
-        console.log('No refresh token available, using original tokens');
-      }
-    } else {
-      console.log('✅ Access token is still valid');
-    }
-
-    const docs = google.docs({ version: 'v1', auth: oAuth2Client });
+    // Set the access token directly
+    requestOAuth2Client.setCredentials({
+      access_token: tokens.access_token,
+      token_type: tokens.token_type,
+      expiry_date: tokens.expiry_date
+    });
+    
+    console.log('✅ Using access token directly for Google Docs API');
+    const docs = google.docs({ version: 'v1', auth: requestOAuth2Client });
     
     // Create the document
     const doc = await docs.documents.create({
@@ -254,7 +248,12 @@ app.post('/export/googledocs', async (req, res) => {
     
     console.log('Document content added successfully');
     const docUrl = `https://docs.google.com/document/d/${documentId}/edit`;
-    res.json({ success: true, docId: documentId, docUrl: docUrl });
+    res.json({ 
+      success: true, 
+      docId: documentId, 
+      docUrl: docUrl,
+      message: 'Document created successfully!'
+    });
     
   } catch (error) {
     console.error('Google Docs export error:', error);
