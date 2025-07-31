@@ -91,6 +91,7 @@ app.get('/auth/google', (req, res) => {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/documents'],
+    prompt: 'consent', // Force consent to get refresh token
   });
   res.json({ url: authUrl });
 });
@@ -100,6 +101,13 @@ app.get('/auth/google/callback', async (req, res) => {
   const code = req.query.code;
   try {
     const { tokens } = await oAuth2Client.getToken(code);
+    console.log('Received tokens:', tokens);
+    
+    // Check if we got a refresh token
+    if (!tokens.refresh_token) {
+      console.warn('No refresh token received. This might cause issues.');
+    }
+    
     oAuth2Client.setCredentials(tokens);
     
     // Redirect back to frontend with tokens
@@ -121,7 +129,8 @@ app.post('/export/googledocs', async (req, res) => {
   console.log('Actions:', actions);
   
   if (!tokens || !tokens.access_token) {
-    return res.status(400).json({ error: 'Missing or invalid Google OAuth tokens.' });
+    console.error('Missing tokens in request:', { hasTokens: !!tokens, hasAccessToken: !!(tokens && tokens.access_token) });
+    return res.status(400).json({ error: 'Missing or invalid Google OAuth tokens. Please sign in again.' });
   }
   
   try {
