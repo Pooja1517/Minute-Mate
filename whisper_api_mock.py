@@ -52,7 +52,13 @@ def summarize():
         if len(sentences) <= 3:
             summary = transcript
         else:
-            summary = '. '.join(sentences[:4]) + '.'
+            # Take first 4 sentences but ensure we get a good summary
+            summary_sentences = sentences[:4]
+            summary = '. '.join(summary_sentences) + '.'
+            
+            # If summary is too short, add more sentences
+            if len(summary) < 200 and len(sentences) > 4:
+                summary = '. '.join(sentences[:6]) + '.'
         
         # Enhanced action item extraction
         action_items = []

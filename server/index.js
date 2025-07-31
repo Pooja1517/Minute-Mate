@@ -95,17 +95,22 @@ app.get('/auth/google', (req, res) => {
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/documents'],
     prompt: 'consent', // Force consent to get refresh token
-    include_granted_scopes: true
+    include_granted_scopes: true,
+    response_type: 'code'
   });
+  console.log('Generated auth URL:', authUrl);
   res.json({ url: authUrl });
 });
 
 // Step 2: Handle OAuth2 callback and get tokens
 app.get('/auth/google/callback', async (req, res) => {
   const code = req.query.code;
+  console.log('OAuth callback received with code:', code ? 'present' : 'missing');
+  
   try {
     const { tokens } = await oAuth2Client.getToken(code);
     console.log('Received tokens:', tokens);
+    console.log('Token keys:', Object.keys(tokens));
     
     // Check if we got a refresh token
     if (!tokens.refresh_token) {
@@ -124,6 +129,10 @@ app.get('/auth/google/callback', async (req, res) => {
     res.redirect(`${frontendUrl}?tokens=${tokenParam}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack
+    });
     const frontendUrl = process.env.FRONTEND_URL || "https://minute-mate-omega.vercel.app";
     res.redirect(`${frontendUrl}?error=oauth_failed`);
   }
@@ -249,6 +258,11 @@ app.post('/export/googledocs', async (req, res) => {
     
   } catch (error) {
     console.error('Google Docs export error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      tokens: tokens ? Object.keys(tokens) : 'no tokens'
+    });
     
     // Provide more specific error messages
     let errorMessage = 'Failed to export to Google Docs';
@@ -258,11 +272,16 @@ app.post('/export/googledocs', async (req, res) => {
       errorMessage = 'Access token expired. Please sign in again.';
     } else if (error.message.includes('insufficient_permissions')) {
       errorMessage = 'Insufficient permissions. Please grant Google Docs access.';
+    } else if (error.message.includes('invalid_client')) {
+      errorMessage = 'Google OAuth configuration issue. Please check your credentials.';
     } else {
       errorMessage = error.message || 'Failed to export to Google Docs';
     }
     
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ 
+      error: errorMessage,
+      details: 'Try signing in again or check your Google OAuth configuration'
+    });
   }
 });
 
@@ -424,6 +443,17 @@ app.post("/export/notion", async (req, res) => {
       details: "Check that your Notion integration token is valid and the page ID exists"
     });
   }
+});
+
+// Test endpoint for Google OAuth
+app.get('/test-oauth', (req, res) => {
+  res.json({
+    client_id: process.env.GOOGLE_CLIENT_ID ? 'configured' : 'missing',
+    client_secret: process.env.GOOGLE_CLIENT_SECRET ? 'configured' : 'missing',
+    frontend_url: process.env.FRONTEND_URL || 'not set',
+    node_env: process.env.NODE_ENV || 'not set',
+    redirect_uri: process.env.NODE_ENV === 'development' ? "http://localhost:5000/auth/google/callback" : "https://minute-mate.onrender.com/auth/google/callback"
+  });
 });
 
 app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));
