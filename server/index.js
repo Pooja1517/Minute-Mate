@@ -80,7 +80,7 @@ const credentials = {
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "client_secret": process.env.GOOGLE_CLIENT_SECRET || "your-google-client-secret-here",
-    "redirect_uris": [process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/auth/google/callback"]
+    "redirect_uris": [process.env.GOOGLE_REDIRECT_URI || "https://minute-mate.onrender.com/auth/google/callback"]
   }
 };
 const { client_id, client_secret, redirect_uris } = credentials.web;
@@ -104,11 +104,11 @@ app.get('/auth/google/callback', async (req, res) => {
     
     // Redirect back to frontend with tokens
     const tokenParam = encodeURIComponent(JSON.stringify(tokens));
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = process.env.FRONTEND_URL || "https://minute-mate-omega.vercel.app";
     res.redirect(`${frontendUrl}?tokens=${tokenParam}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = process.env.FRONTEND_URL || "https://minute-mate-omega.vercel.app";
     res.redirect(`${frontendUrl}?error=oauth_failed`);
   }
 });
