@@ -109,6 +109,9 @@ app.get('/auth/google/callback', async (req, res) => {
     // Check if we got a refresh token
     if (!tokens.refresh_token) {
       console.warn('No refresh token received. This might cause issues.');
+      console.log('Available tokens:', Object.keys(tokens));
+    } else {
+      console.log('✅ Refresh token received successfully');
     }
     
     oAuth2Client.setCredentials(tokens);
@@ -116,6 +119,7 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect back to frontend with tokens
     const tokenParam = encodeURIComponent(JSON.stringify(tokens));
     const frontendUrl = process.env.FRONTEND_URL || "https://minute-mate-omega.vercel.app";
+    console.log('Redirecting to:', frontendUrl);
     res.redirect(`${frontendUrl}?tokens=${tokenParam}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
@@ -132,12 +136,32 @@ app.post('/export/googledocs', async (req, res) => {
   console.log('Actions:', actions);
   
   if (!tokens || !tokens.access_token) {
-    console.error('Missing tokens in request:', { hasTokens: !!tokens, hasAccessToken: !!(tokens && tokens.access_token) });
+    console.error('Missing tokens in request:', { 
+      hasTokens: !!tokens, 
+      hasAccessToken: !!(tokens && tokens.access_token),
+      tokenKeys: tokens ? Object.keys(tokens) : 'no tokens'
+    });
     return res.status(400).json({ error: 'Missing or invalid Google OAuth tokens. Please sign in again.' });
+  }
+  
+  // Check if we have a refresh token
+  if (!tokens.refresh_token) {
+    console.warn('No refresh token available. This might cause issues with token refresh.');
   }
   
   try {
     oAuth2Client.setCredentials(tokens);
+    
+    // Try to refresh token if access token is expired
+    if (tokens.refresh_token) {
+      try {
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        console.log('✅ Token refreshed successfully');
+        oAuth2Client.setCredentials(credentials);
+      } catch (refreshError) {
+        console.warn('Token refresh failed, using original tokens:', refreshError.message);
+      }
+    }
 
     const docs = google.docs({ version: 'v1', auth: oAuth2Client });
     
