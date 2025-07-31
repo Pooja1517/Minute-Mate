@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://minute-mate.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? "http://localhost:5000" : "https://minute-mate.onrender.com");
 
 const TranscriptDashboard = ({ data }) => {
   const [exportStatus, setExportStatus] = useState("");
@@ -170,7 +170,11 @@ const TranscriptDashboard = ({ data }) => {
             <button className="btn bg-black hover:bg-gray-800" onClick={handleExportNotion}>
               🗂 Export to Notion
             </button>
-            <button className="btn bg-blue-700 hover:bg-blue-800" onClick={handleExportGoogleDocs}>
+            <button 
+              className="btn bg-blue-700 hover:bg-blue-800" 
+              onClick={handleExportGoogleDocs}
+              title="Export to Google Docs"
+            >
               📄 Export to Google Docs
             </button>
           </div>

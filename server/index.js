@@ -80,7 +80,10 @@ const credentials = {
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "client_secret": process.env.GOOGLE_CLIENT_SECRET || "your-google-client-secret-here",
-    "redirect_uris": [process.env.GOOGLE_REDIRECT_URI || "https://minute-mate.onrender.com/auth/google/callback"]
+    "redirect_uris": [
+      process.env.GOOGLE_REDIRECT_URI || 
+      (process.env.NODE_ENV === 'development' ? "http://localhost:5000/auth/google/callback" : "https://minute-mate.onrender.com/auth/google/callback")
+    ]
   }
 };
 const { client_id, client_secret, redirect_uris } = credentials.web;
