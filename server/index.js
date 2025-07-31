@@ -95,6 +95,7 @@ app.get('/auth/google', (req, res) => {
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/documents'],
     prompt: 'consent', // Force consent to get refresh token
+    include_granted_scopes: true
   });
   res.json({ url: authUrl });
 });
@@ -152,15 +153,24 @@ app.post('/export/googledocs', async (req, res) => {
   try {
     oAuth2Client.setCredentials(tokens);
     
-    // Try to refresh token if access token is expired
-    if (tokens.refresh_token) {
-      try {
-        const { credentials } = await oAuth2Client.refreshAccessToken();
-        console.log('✅ Token refreshed successfully');
-        oAuth2Client.setCredentials(credentials);
-      } catch (refreshError) {
-        console.warn('Token refresh failed, using original tokens:', refreshError.message);
+    // Check if access token is expired
+    const now = Date.now();
+    if (tokens.expiry_date && now >= tokens.expiry_date) {
+      console.log('Access token expired, attempting refresh...');
+      if (tokens.refresh_token) {
+        try {
+          const { credentials } = await oAuth2Client.refreshAccessToken();
+          console.log('✅ Token refreshed successfully');
+          oAuth2Client.setCredentials(credentials);
+        } catch (refreshError) {
+          console.warn('Token refresh failed:', refreshError.message);
+          // Continue with original tokens - they might still work
+        }
+      } else {
+        console.log('No refresh token available, using original tokens');
       }
+    } else {
+      console.log('✅ Access token is still valid');
     }
 
     const docs = google.docs({ version: 'v1', auth: oAuth2Client });
@@ -239,7 +249,20 @@ app.post('/export/googledocs', async (req, res) => {
     
   } catch (error) {
     console.error('Google Docs export error:', error);
-    res.status(500).json({ error: error.message || 'Failed to export to Google Docs' });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to export to Google Docs';
+    if (error.message.includes('No refresh token is set')) {
+      errorMessage = 'Authentication issue. Please sign in again with Google.';
+    } else if (error.message.includes('invalid_grant')) {
+      errorMessage = 'Access token expired. Please sign in again.';
+    } else if (error.message.includes('insufficient_permissions')) {
+      errorMessage = 'Insufficient permissions. Please grant Google Docs access.';
+    } else {
+      errorMessage = error.message || 'Failed to export to Google Docs';
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 
