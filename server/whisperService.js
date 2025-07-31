@@ -5,12 +5,45 @@ const FormData = require("form-data");
 const transcribeAudio = async (filePath) => {
   const form = new FormData();
   form.append("audio", fs.createReadStream(filePath));
-  const response = await axios.post(
-    "http://127.0.0.1:5001/transcribe",
-    form,
-    { headers: form.getHeaders() }
-  );
-  return { transcript: response.data.text };
+  
+  // Automatic environment detection
+  // Check if running on Render (production) or localhost (development)
+  const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
+  const whisperApiUrl = isProduction 
+    ? "https://minute-mate-1.onrender.com" 
+    : "http://127.0.0.1:5001";
+  
+  console.log(`Connecting to Whisper API at: ${whisperApiUrl}`);
+  
+  try {
+    const response = await axios.post(
+      `${whisperApiUrl}/transcribe`,
+      form,
+      { 
+        headers: form.getHeaders(),
+        timeout: 30000, // 30 second timeout
+        maxContentLength: 50 * 1024 * 1024 // 50MB max file size
+      }
+    );
+    
+    if (!response.data || !response.data.text) {
+      throw new Error('Invalid response from Whisper API: No transcript text received');
+    }
+    
+    return { transcript: response.data.text };
+  } catch (error) {
+    console.error('Whisper API Error:', error.message);
+    
+    if (error.code === 'ECONNREFUSED') {
+      throw new Error(`Cannot connect to Whisper API at ${whisperApiUrl}. Please check if the service is running.`);
+    } else if (error.code === 'ETIMEDOUT') {
+      throw new Error('Whisper API request timed out. Please try again.');
+    } else if (error.response) {
+      throw new Error(`Whisper API error: ${error.response.status} - ${error.response.data?.error || error.response.statusText}`);
+    } else {
+      throw new Error(`Whisper API error: ${error.message}`);
+    }
+  }
 };
 
 module.exports = { transcribeAudio }; 

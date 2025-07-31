@@ -14,6 +14,16 @@ const upload = multer({ dest: "uploads/" });
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "healthy", 
+    service: "minute-mate-backend",
+    environment: process.env.RENDER ? "production" : "development",
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   if (!req.file) {
     console.log("No file received! req.body:", req.body);
@@ -22,14 +32,17 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
   console.log("Received file:", req.file.originalname, req.file.mimetype, req.file.size);
   const filePath = path.resolve(req.file.path);
   try {
+    console.log("Starting transcription...");
     const result = await transcribeAudio(filePath);
     fs.unlinkSync(filePath); // delete file after processing
     if (!result || !result.transcript) {
       return res.status(500).json({ error: "Transcription failed or returned empty result." });
     }
+    console.log("Transcription completed successfully");
     res.json(result);
   } catch (error) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    console.error("Transcription error:", error.message);
     res.status(500).json({ error: error.message || "Transcription error" });
   }
 });
