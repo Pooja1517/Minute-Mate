@@ -25,24 +25,48 @@ app.get("/health", (req, res) => {
 });
 
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
+  console.log("=== Transcription Request Received ===");
+  console.log("Request headers:", req.headers);
+  console.log("Request body keys:", Object.keys(req.body || {}));
+  
   if (!req.file) {
     console.log("No file received! req.body:", req.body);
     return res.status(400).json({ error: "No audio file uploaded" });
   }
+  
   console.log("Received file:", req.file.originalname, req.file.mimetype, req.file.size);
   const filePath = path.resolve(req.file.path);
+  
   try {
     console.log("Starting transcription...");
     const result = await transcribeAudio(filePath);
-    fs.unlinkSync(filePath); // delete file after processing
+    
+    // Clean up file
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log("Temporary file cleaned up");
+    }
+    
     if (!result || !result.transcript) {
+      console.error("No transcript in result:", result);
       return res.status(500).json({ error: "Transcription failed or returned empty result." });
     }
-    console.log("Transcription completed successfully");
+    
+    console.log("Transcription completed successfully, length:", result.transcript.length);
     res.json(result);
   } catch (error) {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    // Clean up file on error
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        console.log("Temporary file cleaned up after error");
+      } catch (cleanupError) {
+        console.error("Error cleaning up file:", cleanupError);
+      }
+    }
+    
     console.error("Transcription error:", error.message);
+    console.error("Error stack:", error.stack);
     res.status(500).json({ error: error.message || "Transcription error" });
   }
 });
@@ -174,7 +198,8 @@ app.post('/export/googledocs', async (req, res) => {
     });
     
     console.log('Document content added successfully');
-    res.json({ success: true, docId: documentId });
+    const docUrl = `https://docs.google.com/document/d/${documentId}/edit`;
+    res.json({ success: true, docId: documentId, docUrl: docUrl });
     
   } catch (error) {
     console.error('Google Docs export error:', error);

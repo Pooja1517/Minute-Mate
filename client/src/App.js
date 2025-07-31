@@ -4,7 +4,7 @@ import TranscriptDashboard from "./components/TranscriptDashboard";
 import "./index.css";
 
 // API endpoints - can be changed for production
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://minute-mate.onrender.com";
 const WHISPER_API_URL = process.env.REACT_APP_WHISPER_API_URL || "http://localhost:5001";
 
 function App() {

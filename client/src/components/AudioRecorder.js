@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react";
 
-// API endpoints - can be changed for production
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://minute-mate.onrender.com";
 
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);

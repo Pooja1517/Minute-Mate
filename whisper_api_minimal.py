@@ -1,10 +1,16 @@
 import os
 import random
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+
+# Simple CORS headers
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
@@ -22,9 +28,7 @@ def transcribe():
         "Good morning team, I hope everyone is doing well. Today we'll review our quarterly goals and achievements. We've made significant progress on several key initiatives.",
         "Welcome to our weekly standup meeting. Let's go around the room and share our updates and any blockers. I'll start with my updates, then we'll hear from each team member.",
         "Thank you all for attending this important meeting. We have several critical items to discuss today, including project timelines, resource allocation, and upcoming deadlines.",
-        "Hi everyone, welcome to our project review meeting. We'll be covering the current sprint progress, upcoming milestones, and any issues that need immediate attention.",
-        "Good afternoon team, I appreciate everyone taking the time to join this meeting. We have a packed agenda today covering our recent developments and planning for the upcoming quarter.",
-        "Welcome to our monthly all-hands meeting. This is a great opportunity for us to come together, share updates, and align on our strategic objectives moving forward."
+        "Hi everyone, welcome to our project review meeting. We'll be covering the current sprint progress, upcoming milestones, and any issues that need immediate attention."
     ]
     
     # Get file size to determine transcript length
@@ -32,17 +36,14 @@ def transcribe():
     audio_file.seek(0)  # Reset file pointer
     
     # Generate transcript based on file size
-    if file_size > 2000000:  # Large file (>2MB)
-        extended_content = " We also need to address the technical challenges we've encountered and discuss potential solutions. The team has been working hard on this project, and I'm confident we can meet our deadlines. Let's also review the feedback from our stakeholders and incorporate their suggestions into our plan. Additionally, we should consider the long-term implications of our decisions and ensure we're building a sustainable foundation for future growth."
-        mock_transcript = random.choice(base_transcripts) + extended_content
-    elif file_size > 1000000:  # Medium file (>1MB)
+    if file_size > 1000000:  # Large file (>1MB)
         extended_content = " We also need to address the technical challenges we've encountered and discuss potential solutions. The team has been working hard on this project, and I'm confident we can meet our deadlines."
         mock_transcript = random.choice(base_transcripts) + extended_content
     else:  # Small file
         mock_transcript = random.choice(base_transcripts)
     
     print(f"Mock transcription completed: {len(mock_transcript)} characters")
-    return jsonify({"text": mock_transcript, "method": "enhanced_mock"})
+    return jsonify({"text": mock_transcript, "method": "minimal_mock"})
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
@@ -53,42 +54,27 @@ def summarize():
         return jsonify({"error": "No transcript provided"}), 400
     
     try:
-        # Enhanced summarization
+        # Simple summarization
         sentences = [s.strip() for s in transcript.split('.') if s.strip()]
+        summary = '. '.join(sentences[:2]) + '.' if len(sentences) > 1 else transcript
         
-        if len(sentences) <= 2:
-            summary = transcript
-        else:
-            # Take first 2-3 sentences for summary
-            summary = '. '.join(sentences[:3]) + '.'
-        
-        # Enhanced action item extraction
+        # Simple action item extraction
         action_items = []
-        action_keywords = [
-            'will', 'going to', 'need to', 'should', 'must', 'have to', 
-            'let\'s', 'we should', 'plan to', 'schedule', 'review', 
-            'update', 'complete', 'finish', 'prepare', 'organize'
-        ]
+        action_keywords = ['will', 'going to', 'need to', 'should', 'must', 'have to', 'let\'s']
         
         for sentence in sentences:
             if any(keyword in sentence.lower() for keyword in action_keywords):
-                # Clean up the action item
                 action = sentence.strip()
                 if action.endswith('.'):
                     action = action[:-1]
                 action_items.append(action)
         
-        # Add default action items if none found
         if not action_items:
-            action_items = [
-                "Review the meeting transcript and notes",
-                "Schedule follow-up meeting with team",
-                "Update project documentation with discussed changes"
-            ]
+            action_items = ["Review the meeting transcript", "Schedule follow-up meeting", "Update documentation"]
         
         return jsonify({
             'summary': summary,
-            'action_items': action_items[:5]  # Limit to 5 items
+            'action_items': action_items[:3]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -97,9 +83,9 @@ def summarize():
 def health():
     return jsonify({
         "status": "healthy", 
-        "service": "whisper-api-ultra-light",
-        "method": "enhanced_mock",
-        "deployment": "bulletproof"
+        "service": "whisper-api-minimal",
+        "method": "minimal_mock",
+        "deployment": "guaranteed"
     })
 
 if __name__ == "__main__":

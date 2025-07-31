@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-// API endpoints - can be changed for production
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://minute-mate.onrender.com";
 
 const TranscriptDashboard = ({ data }) => {
   const [exportStatus, setExportStatus] = useState("");
@@ -125,7 +124,7 @@ const TranscriptDashboard = ({ data }) => {
       });
       const result = await res.json();
       if (result.success) {
-        const docUrl = `https://docs.google.com/document/d/${result.docId}/edit`;
+        const docUrl = result.docUrl || `https://docs.google.com/document/d/${result.docId}/edit`;
         setExportStatus(
           <span>
             Exported to Google Docs! ✅{' '}
