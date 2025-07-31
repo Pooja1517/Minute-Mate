@@ -155,6 +155,8 @@ npm start
    - `https://minute-mate.onrender.com/auth/google/callback` (production)
 6. Update your `.env` file with the credentials
 
+**📋 Detailed Setup Guide:** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for complete configuration instructions.
+
 ### Notion Integration
 1. Go to [Notion Integrations](https://www.notion.so/my-integrations)
 2. Create a new integration
