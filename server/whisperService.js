@@ -14,6 +14,8 @@ const transcribeAudio = async (filePath) => {
     : "http://127.0.0.1:5001";
   
   console.log(`Connecting to Whisper API at: ${whisperApiUrl}`);
+  console.log(`File path: ${filePath}`);
+  console.log(`Form headers:`, form.getHeaders());
   
   try {
     const response = await axios.post(
@@ -21,7 +23,7 @@ const transcribeAudio = async (filePath) => {
       form,
       { 
         headers: form.getHeaders(),
-        timeout: 30000, // 30 second timeout
+        timeout: 300000, // 5 minute timeout for very large files
         maxContentLength: 50 * 1024 * 1024 // 50MB max file size
       }
     );

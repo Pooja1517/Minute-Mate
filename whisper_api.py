@@ -10,12 +10,31 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-model = whisper.load_model("small")  # or "base", "medium", "large"
+
+# Initialize models as None first, then load them
+model = None
+summarizer = None
+action_item_extractor = None
+
+print("Starting Whisper API...")
+
+# Load Whisper model
+try:
+    print("Loading Whisper model...")
+    model = whisper.load_model("small")  # or "base", "medium", "large"
+    print("Whisper model loaded successfully!")
+except Exception as e:
+    print(f"Error loading Whisper model: {e}")
+    model = None
 
 # Load summarization model once at startup
-# Use a smaller, faster summarization model for low-resource systems
-# Use a tiny summarization model for speed and compatibility
-summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+try:
+    print("Loading summarization model...")
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    print("Summarization model loaded successfully!")
+except Exception as e:
+    print(f"Error loading summarization model: {e}")
+    summarizer = None
 
 # Use a small T5 model for extracting action items
 # This model is not perfect, but will extract tasks in plain English
@@ -39,19 +58,92 @@ try:
 except ImportError:
     print("Notion client not installed. Run: pip install notion-client")
 
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "ok",
+        "whisper_model_loaded": model is not None,
+        "summarizer_loaded": summarizer is not None,
+        "action_extractor_loaded": action_item_extractor is not None
+    })
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
+    if model is None:
+        return jsonify({"error": "Whisper model not loaded. Please check the server logs."}), 500
+    
     if "audio" not in request.files:
         return jsonify({"error": "No audio file uploaded"}), 400
+    
     audio_file = request.files["audio"]
-    tmp = tempfile.NamedTemporaryFile(delete=False)
+    
+    # Check file size
+    file_size_mb = len(audio_file.read()) / (1024 * 1024)
+    audio_file.seek(0)  # Reset file pointer
+    
+    if file_size_mb > 10:
+        return jsonify({"error": f"File too large ({file_size_mb:.1f} MB). Maximum size is 10 MB."}), 400
+    
+    print(f"File size: {file_size_mb:.1f} MB")
+    
+    # Use original file extension to preserve format
+    original_filename = audio_file.filename
+    file_extension = os.path.splitext(original_filename)[1] if original_filename else '.wav'
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
+    
     try:
+        # Save the uploaded file
         audio_file.save(tmp.name)
-        tmp.close()  # Ensure file is closed before Whisper reads it
-        result = model.transcribe(tmp.name)
+        tmp.close()
+        
+        file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
+        print(f"Processing file: {original_filename} ({file_size_mb:.1f} MB)")
+        
+        # For larger files, use a smaller model or different approach
+        if file_size_mb > 1.0:
+            print(f"Large file detected ({file_size_mb:.1f} MB), using optimized settings...")
+            
+            # Add longer delay for large files
+            import time
+            time.sleep(1.0)
+            
+            # Use more conservative settings for large files
+            result = model.transcribe(
+                tmp.name, 
+                fp16=False,
+                verbose=True,
+                condition_on_previous_text=False,  # Disable for large files
+                compression_ratio_threshold=2.4,   # More lenient threshold
+                logprob_threshold=-1.0,            # More lenient threshold
+                no_speech_threshold=0.6            # More lenient threshold
+            )
+        else:
+            # Standard settings for smaller files
+            import time
+            time.sleep(0.5)
+            
+            result = model.transcribe(
+                tmp.name, 
+                fp16=False,
+                verbose=True
+            )
+        
+        # Clean up
         os.unlink(tmp.name)
+        
+        if not result or not result.get("text"):
+            return jsonify({"error": "Transcription returned empty result"}), 500
+            
+        print(f"Transcription successful: {len(result['text'])} characters")
         return jsonify({"text": result["text"]})
+        
     except Exception as e:
+        print(f"Transcription error: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        
+        # Clean up on error
         if os.path.exists(tmp.name):
             try:
                 os.unlink(tmp.name)
@@ -63,20 +155,33 @@ def transcribe():
 def summarize():
     data = request.json
     transcript = data.get('transcript', '')
-    print("Received transcript:", transcript)
+    print("Received transcript for summarization:", len(transcript), "characters")
+    
     if not transcript:
         print("No transcript provided.")
         return jsonify({"error": "No transcript provided"}), 400
+    
+    if summarizer is None:
+        return jsonify({"error": "Summarization model not loaded. Please check the server logs."}), 500
+    
     try:
+        # Add delay to prevent memory issues
+        import time
+        time.sleep(0.1)
+        
         # Prompt the summarizer for bullet points and decisions
         prompt = "Summarize the following meeting transcript as bullet points, including key decisions if any:\n" + transcript
         summary = summarizer(prompt, max_length=80, min_length=10, do_sample=False)[0]['summary_text']
-        print("Summary:", summary)
+        print("Summary generated:", len(summary), "characters")
+        
         if not summary.strip():
             summary = "No summary could be generated for this transcript."
+            
         action_items = extract_action_items(transcript)
-        print("Action Items:", action_items)
+        print("Action items extracted:", len(action_items), "items")
+        
         return jsonify({'summary': summary, 'action_items': action_items})
+        
     except Exception as e:
         print("Error in summarization:", e)
         return jsonify({"error": str(e)}), 500
@@ -262,4 +367,10 @@ def test_notion():
         return jsonify({"error": f"Notion test failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True) 
+    # Use environment variables for production deployment
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", 5001))
+    debug = os.getenv("FLASK_ENV") == "development"
+    
+    print(f"Starting Whisper API on {host}:{port}")
+    app.run(host=host, port=port, debug=debug) 

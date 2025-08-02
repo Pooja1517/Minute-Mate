@@ -53,7 +53,7 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
     }
     
     console.log("Transcription completed successfully, length:", result.transcript.length);
-    res.json(result);
+    res.json({ text: result.transcript });
   } catch (error) {
     // Clean up file on error
     if (fs.existsSync(filePath)) {
@@ -96,8 +96,7 @@ app.get('/auth/google', (req, res) => {
     scope: ['https://www.googleapis.com/auth/documents'],
     prompt: 'consent', // Force consent to get refresh token
     include_granted_scopes: true,
-    response_type: 'code',
-    approval_prompt: 'force' // Force approval to get refresh token
+    response_type: 'code'
   });
   console.log('Generated auth URL:', authUrl);
   res.json({ url: authUrl });
@@ -142,7 +141,8 @@ app.get('/auth/google/callback', async (req, res) => {
 // Step 3: Export to Google Docs
 app.post('/export/googledocs', async (req, res) => {
   const { summary, actions, tokens } = req.body;
-  console.log('Received tokens:', tokens);
+  console.log('Received tokens:', tokens ? 'present' : 'missing');
+  console.log('Token keys:', tokens ? Object.keys(tokens) : 'no tokens');
   console.log('Summary:', summary);
   console.log('Actions:', actions);
   
@@ -152,12 +152,13 @@ app.post('/export/googledocs', async (req, res) => {
       hasAccessToken: !!(tokens && tokens.access_token),
       tokenKeys: tokens ? Object.keys(tokens) : 'no tokens'
     });
-    return res.status(400).json({ error: 'Missing or invalid Google OAuth tokens. Please sign in again.' });
+    return res.status(400).json({ error: 'Missing or invalid Google OAuth tokens. Please sign in again with Google.' });
   }
   
-  // Check if we have a refresh token
-  if (!tokens.refresh_token) {
-    console.warn('No refresh token available. This might cause issues with token refresh.');
+  // Check if token is expired
+  if (tokens.expiry_date && Date.now() > tokens.expiry_date) {
+    console.error('Token is expired');
+    return res.status(400).json({ error: 'Access token expired. Please sign in again with Google.' });
   }
   
   try {
@@ -168,20 +169,41 @@ app.post('/export/googledocs', async (req, res) => {
       process.env.NODE_ENV === 'development' ? "http://localhost:5000/auth/google/callback" : "https://minute-mate.onrender.com/auth/google/callback"
     );
     
-    // Set the access token directly
-    requestOAuth2Client.setCredentials({
+    // Set the credentials with all available token information
+    const credentials = {
       access_token: tokens.access_token,
-      token_type: tokens.token_type,
-      expiry_date: tokens.expiry_date
-    });
+      token_type: tokens.token_type || 'Bearer'
+    };
     
-    console.log('✅ Using access token directly for Google Docs API');
+    if (tokens.expiry_date) {
+      credentials.expiry_date = tokens.expiry_date;
+    }
+    
+    if (tokens.refresh_token) {
+      credentials.refresh_token = tokens.refresh_token;
+    }
+    
+    requestOAuth2Client.setCredentials(credentials);
+    
+    console.log('✅ Using access token for Google Docs API');
     const docs = google.docs({ version: 'v1', auth: requestOAuth2Client });
+    
+    // Test the authentication first
+    try {
+      await docs.documents.get({ documentId: 'test' });
+    } catch (testError) {
+      if (testError.code === 404) {
+        // This is expected for a non-existent document, means auth is working
+        console.log('✅ Authentication test passed');
+      } else {
+        throw testError;
+      }
+    }
     
     // Create the document
     const doc = await docs.documents.create({
       requestBody: {
-        title: 'Meeting Notes',
+        title: 'Meeting Notes - ' + new Date().toLocaleDateString(),
       }
     });
     
@@ -259,27 +281,36 @@ app.post('/export/googledocs', async (req, res) => {
     console.error('Google Docs export error:', error);
     console.error('Error details:', {
       message: error.message,
-      stack: error.stack,
-      tokens: tokens ? Object.keys(tokens) : 'no tokens'
+      code: error.code,
+      status: error.status,
+      stack: error.stack
     });
     
     // Provide more specific error messages
     let errorMessage = 'Failed to export to Google Docs';
     if (error.message.includes('No refresh token is set')) {
       errorMessage = 'Authentication issue. Please sign in again with Google.';
-    } else if (error.message.includes('invalid_grant')) {
-      errorMessage = 'Access token expired. Please sign in again.';
-    } else if (error.message.includes('insufficient_permissions')) {
+    } else if (error.message.includes('invalid_grant') || error.code === 401) {
+      errorMessage = 'Access token expired. Please sign in again with Google.';
+    } else if (error.message.includes('insufficient_permissions') || error.code === 403) {
       errorMessage = 'Insufficient permissions. Please grant Google Docs access.';
-    } else if (error.message.includes('invalid_client')) {
+    } else if (error.message.includes('invalid_client') || error.code === 400) {
       errorMessage = 'Google OAuth configuration issue. Please check your credentials.';
+    } else if (error.code === 500) {
+      errorMessage = 'Google API server error. Please try again later.';
     } else {
       errorMessage = error.message || 'Failed to export to Google Docs';
     }
     
     res.status(500).json({ 
       error: errorMessage,
-      details: 'Try signing in again or check your Google OAuth configuration'
+      details: 'Try signing in again or check your Google OAuth configuration',
+      debug: {
+        errorCode: error.code,
+        errorStatus: error.status,
+        hasTokens: !!tokens,
+        tokenKeys: tokens ? Object.keys(tokens) : 'no tokens'
+      }
     });
   }
 });

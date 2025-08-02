@@ -16,12 +16,24 @@ const TranscriptDashboard = ({ data }) => {
       // Handle OAuth callback with tokens
       try {
         const parsedTokens = JSON.parse(decodeURIComponent(tokens));
-        localStorage.setItem('googleTokens', JSON.stringify(parsedTokens));
-        setExportStatus('Google authentication successful! ✅');
+        console.log('Received OAuth tokens:', parsedTokens);
+        
+        if (parsedTokens.access_token) {
+          localStorage.setItem('googleTokens', JSON.stringify(parsedTokens));
+          setExportStatus('Google authentication successful! ✅');
+          console.log('✅ Tokens stored successfully');
+        } else {
+          setExportStatus('Invalid tokens received ❌');
+          console.error('Invalid tokens:', parsedTokens);
+        }
+        
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (err) {
+        console.error('Failed to parse tokens:', err);
         setExportStatus('Failed to parse Google tokens ❌');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     } else if (code) {
       // Handle OAuth callback with code (legacy)
@@ -29,6 +41,7 @@ const TranscriptDashboard = ({ data }) => {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (error) {
+      console.error('OAuth error:', error);
       setExportStatus('Google authentication failed ❌');
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -109,20 +122,40 @@ const TranscriptDashboard = ({ data }) => {
   };
 
   const handleExportGoogleDocs = async () => {
-    const tokens = JSON.parse(localStorage.getItem('googleTokens'));
-    if (!tokens) {
-      setExportStatus('Please sign in with Google first!');
-      await handleGoogleAuth();
-      return;
-    }
-    setExportStatus('Exporting to Google Docs...');
     try {
+      const tokensStr = localStorage.getItem('googleTokens');
+      if (!tokensStr) {
+        setExportStatus('Please sign in with Google first!');
+        await handleGoogleAuth();
+        return;
+      }
+      
+      const tokens = JSON.parse(tokensStr);
+      if (!tokens || !tokens.access_token) {
+        setExportStatus('Invalid tokens. Please sign in again with Google.');
+        localStorage.removeItem('googleTokens');
+        await handleGoogleAuth();
+        return;
+      }
+      
+      // Check if token is expired
+      if (tokens.expiry_date && Date.now() > tokens.expiry_date) {
+        setExportStatus('Token expired. Please sign in again with Google.');
+        localStorage.removeItem('googleTokens');
+        await handleGoogleAuth();
+        return;
+      }
+      
+      setExportStatus('Exporting to Google Docs...');
+      
       const res = await fetch(`${API_BASE_URL}/export/googledocs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ summary: data.summary, actions: data.actions, tokens }),
       });
+      
       const result = await res.json();
+      
       if (result.success) {
         const docUrl = result.docUrl || `https://docs.google.com/document/d/${result.docId}/edit`;
         setExportStatus(
@@ -139,9 +172,17 @@ const TranscriptDashboard = ({ data }) => {
           </span>
         );
       } else {
-        setExportStatus('Failed to export to Google Docs: ' + result.error);
+        if (result.error && result.error.includes('sign in again')) {
+          // Clear invalid tokens and prompt for re-authentication
+          localStorage.removeItem('googleTokens');
+          setExportStatus('Authentication failed. Please sign in again with Google.');
+          await handleGoogleAuth();
+        } else {
+          setExportStatus('Failed to export to Google Docs: ' + (result.error || 'Unknown error'));
+        }
       }
     } catch (err) {
+      console.error('Google Docs export error:', err);
       setExportStatus('Failed to export to Google Docs ❌');
     }
   };
