@@ -16,7 +16,7 @@
     }
   ],
   "env": {
-    "REACT_APP_API_BASE_URL": "https://your-backend-url.onrender.com",
-    "REACT_APP_WHISPER_API_URL": "https://your-whisper-api-url.onrender.com"
+    "REACT_APP_API_BASE_URL": "https://minute-mate-backend.onrender.com",
+    "REACT_APP_WHISPER_API_URL": "https://minute-mate-whisper.onrender.com"
   }
 } 

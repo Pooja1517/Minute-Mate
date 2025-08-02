@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 
-const API_BASE_URL = "http://localhost:5000";
+// Use environment variable for API URL, fallback to production URLs
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://minute-mate-backend.onrender.com";
 
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);
@@ -67,10 +68,16 @@ const AudioRecorder = ({ onUploadComplete }) => {
       return;
     }
     try {
+      console.log("Sending request to:", `${API_BASE_URL}/transcribe`);
       const res = await fetch(`${API_BASE_URL}/transcribe`, {
         method: "POST",
         body: formData,
       });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       console.log("Transcription result:", data);
       if (data.text) {
@@ -81,7 +88,14 @@ const AudioRecorder = ({ onUploadComplete }) => {
         onUploadComplete({ error: "No transcript received from backend." });
       }
     } catch (err) {
-      onUploadComplete({ error: "Transcription failed. Please try again." });
+      console.error("Transcription error:", err);
+      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+        onUploadComplete({ 
+          error: "Cannot connect to backend server. Please make sure the backend is running on " + API_BASE_URL 
+        });
+      } else {
+        onUploadComplete({ error: "Transcription failed: " + err.message });
+      }
     } finally {
       setLoading(false);
     }

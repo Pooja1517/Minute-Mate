@@ -37,7 +37,7 @@ Write-Host ""
 Write-Host "2. Deploy frontend to Vercel:" -ForegroundColor White
 Write-Host "   - Go to https://vercel.com/dashboard" -ForegroundColor Gray
 Write-Host "   - Import your GitHub repository" -ForegroundColor Gray
-Write-Host "   - Set root directory to 'client'" -ForegroundColor Gray
+Write-Host "   - Set root directory to client" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3. Configure environment variables:" -ForegroundColor White
 Write-Host "   - Set API URLs in Vercel" -ForegroundColor Gray
