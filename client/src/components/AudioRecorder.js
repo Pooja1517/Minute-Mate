@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 
-// Use environment variable for API URL, fallback to production URLs
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://minute-mate-backend.onrender.com";
+// Use environment variable for API URL, fallback to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);

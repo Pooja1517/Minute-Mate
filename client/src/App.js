@@ -4,7 +4,7 @@ import TranscriptDashboard from "./components/TranscriptDashboard";
 import "./index.css";
 
 // API endpoints - use environment variables for production
-const WHISPER_API_URL = process.env.REACT_APP_WHISPER_API_URL || "https://minute-mate-whisper.onrender.com";
+const WHISPER_API_URL = process.env.REACT_APP_WHISPER_API_URL || "http://localhost:5001";
 
 function App() {
   const [result, setResult] = useState(null);
