@@ -4,6 +4,12 @@ import React, { useState, useRef } from "react";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
   (window.location.hostname === 'localhost' ? "http://localhost:5000" : "https://minute-mate-backend.onrender.com");
 
+// Debug logging
+console.log("🔧 Environment Detection:");
+console.log("  - Hostname:", window.location.hostname);
+console.log("  - Environment Variable:", process.env.REACT_APP_API_BASE_URL);
+console.log("  - Final API URL:", API_BASE_URL);
+
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);

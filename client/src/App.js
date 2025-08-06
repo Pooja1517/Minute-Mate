@@ -7,6 +7,11 @@ import "./index.css";
 const WHISPER_API_URL = process.env.REACT_APP_WHISPER_API_URL || 
   (window.location.hostname === 'localhost' ? "http://localhost:5001" : "https://minute-mate-whisper.onrender.com");
 
+// Debug logging
+console.log("🔧 Whisper API Configuration:");
+console.log("  - Environment Variable:", process.env.REACT_APP_WHISPER_API_URL);
+console.log("  - Final Whisper API URL:", WHISPER_API_URL);
+
 function App() {
   const [result, setResult] = useState(null);
 
