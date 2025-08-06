@@ -25,7 +25,8 @@ services:
     name: minute-mate-whisper
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    pythonVersion: "3.11"
+    buildCommand: pip install -r requirements-stable.txt
     startCommand: python whisper_api.py
     envVars:
       - key: NOTION_TOKEN

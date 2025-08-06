@@ -4,4 +4,6 @@ openai-whisper==20231210
 transformers==4.35.0
 torch==2.1.0
 sentencepiece==0.1.99
-accelerate==0.24.1 
+accelerate==0.24.1
+numpy>=1.21.0
+scipy>=1.7.0 
