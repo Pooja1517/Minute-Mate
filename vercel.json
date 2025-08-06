@@ -14,9 +14,5 @@
       "src": "/(.*)",
       "dest": "/client/$1"
     }
-  ],
-  "env": {
-    "REACT_APP_API_BASE_URL": "https://minute-mate-backend.onrender.com",
-    "REACT_APP_WHISPER_API_URL": "https://minute-mate-whisper.onrender.com"
-  }
+  ]
 } 

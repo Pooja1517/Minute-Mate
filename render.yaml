@@ -18,7 +18,7 @@ services:
       - key: NOTION_PARENT_PAGE_ID
         sync: false
       - key: FRONTEND_URL
-        value: https://your-frontend-url.vercel.app
+        sync: false
 
   # Python Whisper API Service
   - type: web
