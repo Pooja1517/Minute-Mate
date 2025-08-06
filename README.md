@@ -4,36 +4,38 @@ An AI-powered meeting assistant that transcribes audio and generates meeting sum
 
 ## 🚀 Quick Start
 
-### Local Development
+### Prerequisites
+- Node.js installed
+- Python 3.8+ installed
+- Git repository cloned
+
+### Step 1: Start Backend Services
+
+#### Start Node.js Backend (Port 5000)
 ```bash
-# Start all services locally
-powershell -ExecutionPolicy Bypass -File start_local.ps1
-
-# Then run these in separate terminals:
-# Terminal 1: Backend
-cd server && npm install && node index.js
-
-# Terminal 2: Whisper API  
-python -m pip install -r requirements.txt && python whisper_api.py
-
-# Terminal 3: Frontend
-cd client && npm install && npm start
+cd server
+npm install
+node index.js
 ```
 
-### Production Deployment
+#### Start Python Whisper API (Port 5001)
 ```bash
-# Deploy to Render (Backend)
-powershell -ExecutionPolicy Bypass -File deploy_to_render.ps1
-
-# Deploy to Vercel (Frontend)
-# Follow the guide in QUICK_DEPLOYMENT.md
+# In a new terminal
+python -m pip install -r requirements.txt
+python whisper_api.py
 ```
 
-## 🌐 Environment Support
+### Step 2: Start Frontend (Port 3000)
+```bash
+cd client
+npm install
+npm start
+```
 
-✅ **Local Development**: http://localhost:3000  
-✅ **Vercel Production**: Your Vercel URL  
-✅ **Automatic Environment Detection**: App detects local vs production
+### Step 3: Test Local Setup
+1. Open http://localhost:3000
+2. Record or upload an audio file
+3. Should work with local backend services
 
 ## 📁 Project Structure
 
@@ -42,9 +44,8 @@ minute-mate/
 ├── client/          # React frontend (Port 3000)
 ├── server/          # Node.js backend (Port 5000)
 ├── whisper_api.py   # Python Whisper API (Port 5001)
-├── render.yaml      # Render deployment config
-├── vercel.json      # Vercel deployment config
-└── *.ps1           # PowerShell startup scripts
+├── requirements.txt # Python dependencies
+└── render.yaml      # Render deployment config (optional)
 ```
 
 ## 🔧 Features
@@ -56,21 +57,16 @@ minute-mate/
 - ✅ **Action Items**: Extract tasks and action items
 - 📤 **Export Options**: Google Docs and Notion integration
 
-## 📚 Documentation
-
-- [DUAL_ENVIRONMENT_SETUP.md](DUAL_ENVIRONMENT_SETUP.md) - Complete setup guide
-- [QUICK_DEPLOYMENT.md](QUICK_DEPLOYMENT.md) - Production deployment
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Detailed deployment guide
-
 ## 🧪 Testing
 
-```bash
-# Test local setup
-powershell -ExecutionPolicy Bypass -File test_local_setup.ps1
-```
+Your local setup should work with:
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:5000
+- **Whisper API**: http://localhost:5001
 
 ## 🎯 Result
 
-Your app works seamlessly in both environments:
-- **Local**: For development and testing
-- **Vercel**: For production and sharing
+Your app works seamlessly in local development:
+- **Simple Setup**: No complex environment variables
+- **Hardcoded URLs**: Direct localhost connections
+- **Clean Codebase**: Focused on local development
