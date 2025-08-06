@@ -1,19 +1,22 @@
 # Render Deployment Fix
 
-## 🚨 Issue: Python 3.13 Compatibility Problem
+## 🚨 Issue: Invalid Whisper Version and Python Compatibility
 
-The deployment is failing because `openai-whisper==20231117` is not compatible with Python 3.13.
+The deployment is failing because:
+1. `openai-whisper==20231210` doesn't exist (invalid version)
+2. Python 3.13 has compatibility issues with Whisper
 
 ## ✅ Solution Applied
 
 ### 1. Updated Requirements
-- **Updated**: `openai-whisper==20231117` → `openai-whisper==20231210`
+- **Fixed**: `openai-whisper==20231210` → `openai-whisper==20231117` (valid version)
 - **Added**: `accelerate==0.24.1` for better compatibility
-- **Created**: `requirements-stable.txt` with more stable versions
+- **Created**: `requirements-stable.txt` with stable versions
+- **Created**: `requirements-alternative.txt` with faster-whisper as backup
 
 ### 2. Python Version Specification
-- **Added**: `runtime.txt` specifying Python 3.11.7
-- **Updated**: `render.yaml` with `pythonVersion: "3.11"`
+- **Updated**: `runtime.txt` specifying Python 3.10.12
+- **Updated**: `render.yaml` with `pythonVersion: "3.10"`
 
 ### 3. Build Configuration
 - **Updated**: Build command to use `requirements-stable.txt`
@@ -24,18 +27,18 @@ The deployment is failing because `openai-whisper==20231117` is not compatible w
 ```txt
 Flask==2.3.3
 Flask-CORS==4.0.0
-openai-whisper==20231210  # Updated version
+openai-whisper==20231117  # Fixed: valid version
 transformers==4.35.0
 torch==2.1.0
 sentencepiece==0.1.99
-accelerate==0.24.1  # Added for compatibility
+accelerate==0.24.1
 ```
 
-### requirements-stable.txt (NEW)
+### requirements-stable.txt
 ```txt
 Flask==2.3.3
 Flask-CORS==4.0.0
-openai-whisper==20231210
+openai-whisper==20231117  # Fixed: valid version
 transformers==4.35.0
 torch==2.1.0
 sentencepiece==0.1.99
@@ -44,9 +47,22 @@ numpy>=1.21.0
 scipy>=1.7.0
 ```
 
-### runtime.txt (NEW)
+### requirements-alternative.txt (NEW)
 ```txt
-python-3.11.7
+Flask==2.3.3
+Flask-CORS==4.0.0
+faster-whisper==0.9.0  # Alternative to openai-whisper
+transformers==4.35.0
+torch==2.1.0
+sentencepiece==0.1.99
+accelerate==0.24.1
+numpy>=1.21.0
+scipy>=1.7.0
+```
+
+### runtime.txt
+```txt
+python-3.10.12  # Updated: more compatible version
 ```
 
 ### render.yaml
@@ -56,8 +72,8 @@ python-3.11.7
   name: minute-mate-whisper
   env: python
   plan: free
-  pythonVersion: "3.11"  # Added Python version
-  buildCommand: pip install -r requirements-stable.txt  # Updated build command
+  pythonVersion: "3.10"  # Updated: more compatible version
+  buildCommand: pip install -r requirements-stable.txt
   startCommand: python whisper_api.py
 ```
 
@@ -66,7 +82,7 @@ python-3.11.7
 ### 1. Commit and Push Changes
 ```bash
 git add .
-git commit -m "Fix Render deployment: Update Python version and requirements for compatibility"
+git commit -m "Fix Render deployment: Use valid Whisper version and Python 3.10"
 git push origin main
 ```
 
@@ -78,8 +94,8 @@ git push origin main
 
 ### 3. Expected Result
 - ✅ Build should complete successfully
-- ✅ Python 3.11 will be used instead of 3.13
-- ✅ All dependencies will install correctly
+- ✅ Python 3.10 will be used (more compatible)
+- ✅ Valid Whisper version will install correctly
 - ✅ Whisper API will start properly
 
 ## 🧪 Testing
@@ -98,16 +114,16 @@ After successful deployment:
 
 ## 🐛 Alternative Solutions (if still failing)
 
-### Option 1: Use Even Older Python Version
-```txt
-# runtime.txt
-python-3.10.12
+### Option 1: Use faster-whisper (Recommended)
+```yaml
+# render.yaml
+buildCommand: pip install -r requirements-alternative.txt
 ```
 
-### Option 2: Use Different Whisper Package
+### Option 2: Use Latest Available Version
 ```txt
 # requirements-stable.txt
-faster-whisper==0.9.0  # Alternative to openai-whisper
+openai-whisper==20250625  # Latest available version
 ```
 
 ### Option 3: Manual Package Installation
@@ -116,7 +132,7 @@ faster-whisper==0.9.0  # Alternative to openai-whisper
 buildCommand: |
   pip install --upgrade pip
   pip install torch==2.1.0
-  pip install openai-whisper==20231210
+  pip install openai-whisper==20231117
   pip install -r requirements-stable.txt
 ```
 
@@ -134,7 +150,7 @@ buildCommand: |
 
 After this fix:
 - ✅ Render deployment succeeds
-- ✅ Whisper API runs on Python 3.11
-- ✅ All dependencies install correctly
+- ✅ Whisper API runs on Python 3.10
+- ✅ Valid Whisper version installs correctly
 - ✅ Vercel frontend connects to Render backend
 - ✅ Audio transcription works in production 
