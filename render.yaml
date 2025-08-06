@@ -25,7 +25,6 @@ services:
     name: minute-mate-whisper
     env: python
     plan: free
-    pythonVersion: "3.10"
     buildCommand: pip install -r requirements.txt
     startCommand: python whisper_api.py
     envVars:

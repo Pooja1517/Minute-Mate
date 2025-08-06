@@ -2,7 +2,7 @@ import os
 os.environ["PATH"] += os.pathsep + r"C:\Users\T1IN\Downloads\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin"
 
 from flask import Flask, request, jsonify
-from faster_whisper import WhisperModel
+import whisper
 import tempfile
 from transformers import pipeline
 import re
@@ -21,7 +21,7 @@ print("Starting Whisper API...")
 # Load Whisper model
 try:
     print("Loading Whisper model...")
-    model = WhisperModel("small")  # or "base", "medium", "large"
+    model = whisper.load_model("small")  # or "base", "medium", "large"
     print("Whisper model loaded successfully!")
 except Exception as e:
     print(f"Error loading Whisper model: {e}")
@@ -99,34 +99,57 @@ def transcribe():
         file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
         print(f"Processing file: {original_filename} ({file_size_mb:.1f} MB)")
         
-        # Use faster-whisper for transcription
-        segments, info = model.transcribe(tmp.name, beam_size=5)
+        # For larger files, use a smaller model or different approach
+        if file_size_mb > 1.0:
+            print(f"Large file detected ({file_size_mb:.1f} MB), using optimized settings...")
+            
+            # Add longer delay for large files
+            import time
+            time.sleep(1.0)
+            
+            # Use more conservative settings for large files
+            result = model.transcribe(
+                tmp.name, 
+                fp16=False,
+                verbose=True,
+                condition_on_previous_text=False,  # Disable for large files
+                compression_ratio_threshold=2.4,   # More lenient threshold
+                logprob_threshold=-1.0,            # More lenient threshold
+                no_speech_threshold=0.6            # More lenient threshold
+            )
+        else:
+            # Standard settings for smaller files
+            import time
+            time.sleep(0.5)
+            
+            result = model.transcribe(
+                tmp.name, 
+                fp16=False,
+                verbose=True
+            )
         
-        # Extract text from segments
-        transcript = ""
-        for segment in segments:
-            transcript += segment.text + " "
+        # Clean up
+        os.unlink(tmp.name)
         
-        transcript = transcript.strip()
-        
-        print(f"Transcription successful: {len(transcript)} characters")
-        
-        return jsonify({
-            "transcript": transcript,
-            "language": info.language,
-            "language_probability": info.language_probability
-        })
+        if not result or not result.get("text"):
+            return jsonify({"error": "Transcription returned empty result"}), 500
+            
+        print(f"Transcription successful: {len(result['text'])} characters")
+        return jsonify({"text": result["text"]})
         
     except Exception as e:
         print(f"Transcription error: {e}")
-        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
-    
-    finally:
-        # Clean up temporary file
-        try:
-            os.unlink(tmp.name)
-        except:
-            pass
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        
+        # Clean up on error
+        if os.path.exists(tmp.name):
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/summarize", methods=["POST"])
 def summarize():

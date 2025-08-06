@@ -1,28 +1,7 @@
 import React, { useState, useRef } from "react";
 
-// Environment-based API URL configuration
-const getApiBaseUrl = () => {
-  // First priority: Environment variable (for production)
-  if (process.env.REACT_APP_API_BASE_URL) {
-    return process.env.REACT_APP_API_BASE_URL;
-  }
-  
-  // Second priority: Check if we're in development (localhost)
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return "http://localhost:5000";
-  }
-  
-  // Third priority: Production fallback (Render backend)
-  return "https://minute-mate-backend.onrender.com";
-};
-
-const API_BASE_URL = getApiBaseUrl();
-
-// Debug logging
-console.log("🔧 AudioRecorder Environment Detection:");
-console.log("  - Hostname:", window.location.hostname);
-console.log("  - Environment Variable:", process.env.REACT_APP_API_BASE_URL);
-console.log("  - Final API URL:", API_BASE_URL);
+// Simple hardcoded API URL for local development
+const API_BASE_URL = "http://localhost:5000";
 
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);
