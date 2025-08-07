@@ -1,4 +1,17 @@
 services:
+  # React Frontend Service
+  - type: web
+    name: minute-mate-frontend
+    env: static
+    plan: free
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false
+      - key: REACT_APP_WHISPER_URL
+        sync: false
+
   # Node.js Backend Service
   - type: web
     name: minute-mate-backend
