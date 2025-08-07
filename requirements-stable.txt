@@ -1,8 +1,8 @@
-Flask==2.3.3
+Flask==2.2.5
 Flask-CORS==4.0.0
 openai-whisper==20231117
-transformers==4.35.0
-torch==2.1.0
+transformers==4.30.2
+torch==2.0.1
 sentencepiece==0.1.99
 ffmpeg-python==0.2.0
 notion-client==2.2.1

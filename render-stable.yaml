@@ -1,0 +1,51 @@
+services:
+  # React Frontend Service
+  - type: web
+    name: minute-mate-frontend
+    env: static
+    plan: free
+    buildCommand: cd client && npm ci --only=production && npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false
+      - key: REACT_APP_WHISPER_URL
+        sync: false
+
+  # Node.js Backend Service
+  - type: web
+    name: minute-mate-backend
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_PARENT_PAGE_ID
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # Python Whisper API Service - Using stable versions
+  - type: web
+    name: minute-mate-whisper-stable
+    env: python
+    plan: free
+    buildCommand: chmod +x build-stable.sh && ./build-stable.sh
+    startCommand: python whisper_api.py
+    envVars:
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FLASK_ENV
+        value: "production" 

@@ -16,9 +16,9 @@ apt-get install -y portaudio19-dev
 echo "Upgrading pip..."
 python -m pip install --upgrade pip
 
-# Install Python dependencies with specific order and flags
-echo "Installing Python dependencies..."
+# Install Python dependencies with stable versions
+echo "Installing Python dependencies with stable versions..."
 pip install --upgrade setuptools wheel
-pip install -r requirements.txt --no-cache-dir --force-reinstall
+pip install -r requirements-stable.txt --no-cache-dir
 
 echo "Build completed successfully!" 

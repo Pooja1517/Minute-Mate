@@ -31,6 +31,14 @@
   - Added .npmrc for better npm behavior
   - Used `npm ci` for more reliable builds
 
+### 5. Python __version__ KeyError
+- **Problem**: Python packages missing `__version__` attribute causing build failures
+- **Solution**:
+  - Created multiple requirements files with different version strategies
+  - Added setuptools and wheel upgrades in build scripts
+  - Created minimal requirements file for essential packages only
+  - Added `--no-cache-dir` and `--force-reinstall` flags
+
 ## Deployment Options
 
 ### Option 1: Standard Build (Recommended)
@@ -39,7 +47,16 @@ Use the updated `render.yaml` with all three services:
 - Backend (Node.js)
 - Whisper API (Python with build script)
 
-### Option 2: Docker Build (Alternative)
+### Option 2: Stable Build (Alternative)
+Use `render-stable.yaml` for more conservative package versions:
+```yaml
+buildCommand: chmod +x build-stable.sh && ./build-stable.sh
+```
+
+### Option 3: Minimal Build (Troubleshooting)
+Use `requirements-minimal.txt` and `build-minimal.sh` for essential packages only.
+
+### Option 4: Docker Build (Alternative)
 Use `render-docker.yaml` for Docker-based Whisper deployment:
 ```yaml
 env: docker
@@ -90,10 +107,12 @@ dockerfilePath: ./Dockerfile
 2. **requirements.txt**:
    - Added `ffmpeg-python==0.2.0`
    - Added `notion-client==2.2.1`
+   - Added `setuptools>=65.0.0` and `wheel>=0.38.0`
 
 3. **build.sh**:
    - Installs ffmpeg and audio processing libraries
-   - Installs Python dependencies
+   - Upgrades pip and setuptools
+   - Uses `--no-cache-dir` and `--force-reinstall` flags
 
 4. **Dockerfile**:
    - Alternative approach using Docker
@@ -111,6 +130,12 @@ dockerfilePath: ./Dockerfile
 7. **render.yaml**:
    - Added frontend service configuration
    - Proper static site deployment setup
+
+8. **Alternative Files**:
+   - `requirements-stable.txt` - Conservative versions
+   - `requirements-minimal.txt` - Essential packages only
+   - `build-stable.sh` and `build-minimal.sh` - Alternative build scripts
+   - `render-stable.yaml` - Alternative deployment config
 
 ## Environment Variables Required
 
@@ -134,7 +159,7 @@ dockerfilePath: ./Dockerfile
 
 ## Testing the Deployment
 
-1. Deploy using either `render.yaml` or `render-docker.yaml`
+1. Deploy using either `render.yaml`, `render-stable.yaml`, or `render-docker.yaml`
 2. Check the health endpoints:
    - Frontend: `https://your-frontend-service.onrender.com`
    - Backend: `https://your-backend-service.onrender.com`
@@ -146,15 +171,21 @@ dockerfilePath: ./Dockerfile
 
 If you still encounter issues:
 
-1. **Frontend Build Issues**: 
+1. **Python __version__ KeyError**:
+   - Try `render-stable.yaml` with conservative versions
+   - Use `requirements-minimal.txt` for essential packages only
+   - Check that setuptools and wheel are up to date
+   - Try Docker approach for better isolation
+
+2. **Frontend Build Issues**: 
    - Check that all dependencies are compatible
    - Try using `npm ci` instead of `npm install`
    - Ensure Node.js version is compatible
 
-2. **Memory Issues**: Try the Docker approach which has better memory management
-3. **ffmpeg Errors**: Check that build.sh is being executed properly
-4. **Model Loading**: The service will fallback to "tiny" model if "base" fails
-5. **Timeouts**: Reduce audio file size or use shorter recordings
+3. **Memory Issues**: Try the Docker approach which has better memory management
+4. **ffmpeg Errors**: Check that build.sh is being executed properly
+5. **Model Loading**: The service will fallback to "tiny" model if "base" fails
+6. **Timeouts**: Reduce audio file size or use shorter recordings
 
 ## Performance Notes
 
