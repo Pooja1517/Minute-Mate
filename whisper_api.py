@@ -1,5 +1,6 @@
 import os
-os.environ["PATH"] += os.pathsep + r"C:\Users\T1IN\Downloads\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin"
+# Remove Windows-specific ffmpeg path for Render deployment
+# os.environ["PATH"] += os.pathsep + r"C:\Users\T1IN\Downloads\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin"
 
 from flask import Flask, request, jsonify
 import whisper
@@ -18,14 +19,21 @@ action_item_extractor = None
 
 print("Starting Whisper API...")
 
-# Load Whisper model
+# Load Whisper model - Use base model for Render free tier to reduce memory usage
 try:
     print("Loading Whisper model...")
-    model = whisper.load_model("small")  # or "base", "medium", "large"
+    model = whisper.load_model("base")  # Changed from "small" to "base" for Render free tier
     print("Whisper model loaded successfully!")
 except Exception as e:
     print(f"Error loading Whisper model: {e}")
-    model = None
+    # Fallback to tiny model if base fails
+    try:
+        print("Trying tiny model as fallback...")
+        model = whisper.load_model("tiny")
+        print("Tiny Whisper model loaded successfully!")
+    except Exception as e2:
+        print(f"Error loading tiny model: {e2}")
+        model = None
 
 # Load summarization model once at startup
 try:
@@ -77,12 +85,12 @@ def transcribe():
     
     audio_file = request.files["audio"]
     
-    # Check file size
+    # Check file size - Reduced limit for Render free tier
     file_size_mb = len(audio_file.read()) / (1024 * 1024)
     audio_file.seek(0)  # Reset file pointer
     
-    if file_size_mb > 10:
-        return jsonify({"error": f"File too large ({file_size_mb:.1f} MB). Maximum size is 10 MB."}), 400
+    if file_size_mb > 5:  # Reduced from 10MB to 5MB for Render free tier
+        return jsonify({"error": f"File too large ({file_size_mb:.1f} MB). Maximum size is 5 MB for Render free tier."}), 400
     
     print(f"File size: {file_size_mb:.1f} MB")
     
@@ -99,34 +107,21 @@ def transcribe():
         file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
         print(f"Processing file: {original_filename} ({file_size_mb:.1f} MB)")
         
-        # For larger files, use a smaller model or different approach
-        if file_size_mb > 1.0:
-            print(f"Large file detected ({file_size_mb:.1f} MB), using optimized settings...")
-            
-            # Add longer delay for large files
-            import time
-            time.sleep(1.0)
-            
-            # Use more conservative settings for large files
-            result = model.transcribe(
-                tmp.name, 
-                fp16=False,
-                verbose=True,
-                condition_on_previous_text=False,  # Disable for large files
-                compression_ratio_threshold=2.4,   # More lenient threshold
-                logprob_threshold=-1.0,            # More lenient threshold
-                no_speech_threshold=0.6            # More lenient threshold
-            )
-        else:
-            # Standard settings for smaller files
-            import time
-            time.sleep(0.5)
-            
-            result = model.transcribe(
-                tmp.name, 
-                fp16=False,
-                verbose=True
-            )
+        # Optimized settings for Render free tier
+        print("Starting transcription with optimized settings for Render...")
+        
+        # Use conservative settings for Render free tier
+        result = model.transcribe(
+            tmp.name, 
+            fp16=False,  # Disable fp16 for better compatibility
+            verbose=True,
+            condition_on_previous_text=False,  # Disable for memory efficiency
+            compression_ratio_threshold=2.4,   # More lenient threshold
+            logprob_threshold=-1.0,            # More lenient threshold
+            no_speech_threshold=0.6,           # More lenient threshold
+            language=None,                     # Auto-detect language
+            task="transcribe"                  # Explicitly set task
+        )
         
         # Clean up
         os.unlink(tmp.name)

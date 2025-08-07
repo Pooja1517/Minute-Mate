@@ -20,13 +20,12 @@ services:
       - key: FRONTEND_URL
         sync: false
 
-  # Python Whisper API Service - Optimized for Render free tier
+  # Python Whisper API Service - Using Docker for better dependency management
   - type: web
-    name: minute-mate-whisper
-    env: python
+    name: minute-mate-whisper-docker
+    env: docker
     plan: free
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: python whisper_api.py
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NOTION_TOKEN
         sync: false
