@@ -1,0 +1,13 @@
+services:
+  # Python Whisper API Service - Minimal configuration for Render
+  - type: web
+    name: minute-mate-whisper-minimal
+    env: python
+    plan: free
+    buildCommand: chmod +x build-render-minimal.sh && ./build-render-minimal.sh
+    startCommand: python whisper_render_fix.py
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FLASK_ENV
+        value: "production" 
