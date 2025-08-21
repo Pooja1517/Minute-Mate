@@ -33,12 +33,12 @@ services:
       - key: FRONTEND_URL
         sync: false
 
-  # Python Whisper API Service - Optimized for Render free tier
+  # Python Whisper API Service - Using stable versions for better compatibility
   - type: web
     name: minute-mate-whisper
     env: python
     plan: free
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: chmod +x build-stable.sh && ./build-stable.sh
     startCommand: python whisper_api.py
     envVars:
       - key: NOTION_TOKEN

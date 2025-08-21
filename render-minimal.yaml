@@ -1,0 +1,17 @@
+services:
+  # Python Whisper API Service - Minimal configuration
+  - type: web
+    name: minute-mate-whisper-minimal
+    env: python
+    plan: free
+    buildCommand: chmod +x build-minimal.sh && ./build-minimal.sh
+    startCommand: python whisper_api.py
+    envVars:
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FLASK_ENV
+        value: "production" 
