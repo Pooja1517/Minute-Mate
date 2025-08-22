@@ -66,7 +66,6 @@ def load_models():
         return False
 
 # Load models on startup
-@app.before_first_request
 def initialize_models():
     """Load models before first request"""
     logger.info("Initializing Whisper models...")
@@ -74,6 +73,10 @@ def initialize_models():
         logger.error("Failed to load Whisper models!")
     else:
         logger.info("Whisper models loaded successfully!")
+
+# Initialize models immediately when app is created
+with app.app_context():
+    initialize_models()
 
 @app.route('/health', methods=['GET'])
 def health_check():
