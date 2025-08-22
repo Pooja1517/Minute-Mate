@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 
-// Simple hardcoded API URL for local development
-const API_BASE_URL = "http://localhost:5000";
+// Use deployed backend URL for production
+const API_BASE_URL = "https://minute-mate-backend.onrender.com";
 
 const AudioRecorder = ({ onUploadComplete }) => {
   const [recording, setRecording] = useState(false);

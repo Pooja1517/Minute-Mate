@@ -3,8 +3,8 @@ import AudioRecorder from "./components/AudioRecorder";
 import TranscriptDashboard from "./components/TranscriptDashboard";
 import "./index.css";
 
-// Use backend URL for all API calls (backend will route to Whisper)
-const BACKEND_URL = "http://localhost:5000";
+// Use deployed backend URL for production
+const BACKEND_URL = "https://minute-mate-backend.onrender.com";
 
 function App() {
   const [result, setResult] = useState(null);
