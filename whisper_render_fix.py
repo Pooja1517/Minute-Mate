@@ -1,274 +1,191 @@
-import os
 from flask import Flask, request, jsonify
-import whisper
-import tempfile
 from flask_cors import CORS
+import os
+import tempfile
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize Whisper model
-model = None
+# Global variables for models
+whisper_model = None
+model_type = None
 
-print("Starting Whisper API for Render...")
-
-# Load Whisper model with Render-optimized settings
-try:
-    print("Loading Whisper model...")
-    # Use tiny model for Render free tier to avoid memory issues
-    model = whisper.load_model("tiny")
-    print("Whisper tiny model loaded successfully!")
-except Exception as e:
-    print(f"Error loading Whisper model: {e}")
-    model = None
-
-# Notion Integration Setup
-NOTION_TOKEN = os.getenv("NOTION_TOKEN", "your-notion-integration-token-here")
-NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID", "your-notion-database-id-here")
-
-# Initialize Notion client (only if token is provided)
-notion_client = None
-try:
-    from notion_client import Client
-    if NOTION_TOKEN != "your-notion-integration-token-here":
-        notion_client = Client(auth=NOTION_TOKEN)
-        print("Notion client initialized successfully!")
-except ImportError:
-    print("Notion client not installed. Run: pip install notion-client")
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({
-        "status": "ok",
-        "whisper_model_loaded": model is not None,
-        "model_type": "tiny" if model else "none",
-        "notion_available": notion_client is not None
-    })
-
-@app.route("/transcribe", methods=["POST"])
-def transcribe():
-    if model is None:
-        return jsonify({"error": "Whisper model not loaded. Please check the server logs."}), 500
+def load_models():
+    """Load lightweight Whisper model optimized for Render free tier"""
+    global whisper_model, model_type
     
-    if "audio" not in request.files:
-        return jsonify({"error": "No audio file uploaded"}), 400
+    try:
+        # Try to use faster-whisper first (more memory efficient)
+        try:
+            from faster_whisper import WhisperModel
+            model_name = os.getenv("WHISPER_MODEL", "tiny")
+            logger.info(f"Loading faster-whisper model: {model_name}")
+            
+            # Use CPU and small model for Render free tier
+            whisper_model = WhisperModel(
+                model_name, 
+                device="cpu", 
+                compute_type="int8",
+                cpu_threads=1,
+                num_workers=1
+            )
+            model_type = "faster-whisper"
+            logger.info("Faster-whisper model loaded successfully!")
+            return True
+            
+        except ImportError:
+            # Fallback to regular whisper if faster-whisper not available
+            import whisper
+            model_name = os.getenv("WHISPER_MODEL", "tiny")
+            logger.info(f"Loading regular whisper model: {model_name}")
+            whisper_model = whisper.load_model(model_name)
+            model_type = "regular-whisper"
+            logger.info("Regular whisper model loaded successfully!")
+            return True
+            
+    except Exception as e:
+        logger.error(f"Error loading Whisper model: {e}")
+        return False
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    if whisper_model is not None:
+        return jsonify({
+            "status": "healthy",
+            "whisper_model": "loaded",
+            "message": "Service is running",
+            "model_type": model_type
+        })
+    else:
+        return jsonify({
+            "status": "unhealthy",
+            "whisper_model": "not_loaded",
+            "message": "Models not loaded"
+        }), 500
+
+@app.route('/transcribe', methods=['POST'])
+def transcribe_audio():
+    """Transcribe audio file with memory optimization"""
+    if whisper_model is None:
+        return jsonify({"error": "Whisper model not loaded"}), 500
     
-    audio_file = request.files["audio"]
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
     
-    # Check file size - Very conservative for Render free tier
+    audio_file = request.files['audio']
+    if audio_file.filename == '':
+        return jsonify({"error": "No audio file selected"}), 400
+    
+    # Check file size - strict limit for Render free tier
     file_size_mb = len(audio_file.read()) / (1024 * 1024)
     audio_file.seek(0)  # Reset file pointer
     
-    if file_size_mb > 3:  # Very conservative limit for Render free tier
+    if file_size_mb > 3:  # 3MB limit for Render free tier
         return jsonify({"error": f"File too large ({file_size_mb:.1f} MB). Maximum size is 3 MB for Render free tier."}), 400
     
-    print(f"Processing file: {file_size_mb:.1f} MB")
-    
-    # Use original file extension to preserve format
-    original_filename = audio_file.filename
-    file_extension = os.path.splitext(original_filename)[1] if original_filename else '.wav'
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
-    
     try:
-        # Save the uploaded file
-        audio_file.save(tmp.name)
-        tmp.close()
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            audio_file.save(temp_file.name)
+            temp_path = temp_file.name
         
-        print("Starting transcription with Render-optimized settings...")
+        # Transcribe using Whisper with memory optimization
+        logger.info("Starting transcription...")
+        start_time = time.time()
         
-        # Use very conservative settings for Render free tier
-        result = model.transcribe(
-            tmp.name, 
-            fp16=False,  # Disable fp16 for better compatibility
-            verbose=True,
-            condition_on_previous_text=False,  # Disable for memory efficiency
-            compression_ratio_threshold=2.4,   # More lenient threshold
-            logprob_threshold=-1.0,            # More lenient threshold
-            no_speech_threshold=0.6,           # More lenient threshold
-            language=None,                     # Auto-detect language
-            task="transcribe"                  # Explicitly set task
-        )
-        
-        # Clean up
-        os.unlink(tmp.name)
-        
-        if not result or not result.get("text"):
-            return jsonify({"error": "Transcription returned empty result"}), 500
+        # Use different transcription method based on model type
+        if model_type == "faster-whisper":
+            # faster-whisper
+            segments, info = whisper_model.transcribe(
+                temp_path,
+                beam_size=1,  # Minimal beam size for memory
+                best_of=1,     # Minimal best_of for memory
+                temperature=0.0,  # Deterministic output
+                compression_ratio_threshold=2.4,
+                log_prob_threshold=-1.0,
+                no_speech_threshold=0.6,
+                condition_on_previous_text=False,
+                initial_prompt=None
+            )
             
-        print(f"Transcription successful: {len(result['text'])} characters")
-        return jsonify({"text": result["text"]})
+            # Extract text from segments
+            transcript = " ".join([segment.text for segment in segments])
+            language = info.language if hasattr(info, 'language') else "unknown"
+            
+        else:
+            # regular whisper - use compatible parameters
+            result = whisper_model.transcribe(
+                temp_path,
+                fp16=False,  # Disable fp16 for better compatibility
+                verbose=False,
+                condition_on_previous_text=False,
+                compression_ratio_threshold=2.4,
+                # Remove incompatible parameters for regular whisper
+                language=None,
+                task="transcribe"
+            )
+            transcript = result["text"]
+            language = result.get("language", "unknown")
+        
+        # Clean up temporary file
+        os.unlink(temp_path)
+        
+        transcription_time = time.time() - start_time
+        logger.info(f"Transcription completed in {transcription_time:.2f}s: {len(transcript)} characters")
+        
+        return jsonify({
+            "text": transcript,
+            "language": language,
+            "model_used": os.getenv("WHISPER_MODEL", "tiny"),
+            "processing_time": round(transcription_time, 2)
+        })
         
     except Exception as e:
-        print(f"Transcription error: {e}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
+        logger.error(f"Transcription error: {e}")
         
         # Clean up on error
-        if os.path.exists(tmp.name):
+        if 'temp_path' in locals() and os.path.exists(temp_path):
             try:
-                os.unlink(tmp.name)
+                os.unlink(temp_path)
             except Exception:
                 pass
-        return jsonify({"error": str(e)}), 500
+                
+        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
 
-@app.route("/export/notion", methods=["POST"])
-def export_to_notion():
-    print("Notion export endpoint called")
-    
-    if notion_client is None:
-        print("Notion client is None - integration not configured")
-        return jsonify({"error": "Notion integration not configured. Please add your token and database ID."}), 500
-    
-    data = request.json
-    print("Received data for Notion export:", data)
-    
-    transcript = data.get('transcript', '')
-    title = data.get('title', 'Untitled Meeting')
-    
-    print(f"Transcript length: {len(transcript)}")
-    print(f"Title: {title}")
-    
-    if not transcript:
-        print("No transcript provided")
-        return jsonify({"error": "No transcript provided"}), 400
-    
-    try:
-        print("Creating Notion page...")
-        
-        # Create blocks for the Notion page
-        children = [
-            {
-                "object": "block",
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"type": "text", "text": {"content": "📝 Meeting Transcript"}}]
-                }
-            },
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": transcript}}]
-                }
-            }
-        ]
-        
-        print(f"Creating page with {len(children)} blocks")
-        print(f"Database ID: {NOTION_DATABASE_ID}")
-        
-        # Create the page in Notion
-        response = notion_client.pages.create(
-            parent={"database_id": NOTION_DATABASE_ID},
-            properties={
-                "Name": {
-                    "title": [
-                        {
-                            "text": {
-                                "content": f"Meeting Notes - {title}"
-                            }
-                        }
-                    ]
-                }
-            },
-            children=children
-        )
-        
-        print("Notion page created successfully:", response["id"])
-        return jsonify({
-            "success": True,
-            "message": "Successfully exported to Notion!",
-            "page_id": response["id"]
-        })
-        
-    except Exception as e:
-        print(f"Error exporting to Notion: {e}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
-        return jsonify({"error": f"Failed to export to Notion: {str(e)}"}), 500
-
-@app.route("/export/google-docs", methods=["POST"])
-def export_to_google_docs():
-    print("Google Docs export endpoint called")
-    
-    data = request.json
-    print("Received data for Google Docs export:", data)
-    
-    transcript = data.get('transcript', '')
-    title = data.get('title', 'Untitled Meeting')
-    
-    print(f"Transcript length: {len(transcript)}")
-    print(f"Title: {title}")
-    
-    if not transcript:
-        print("No transcript provided")
-        return jsonify({"error": "No transcript provided"}), 400
-    
-    try:
-        # For Google Docs, we'll return a formatted text that can be copied
-        # In a full implementation, you'd use Google Docs API
-        formatted_text = f"""
-# {title}
-
-## Meeting Transcript
-
-{transcript}
-
----
-*Generated by Minute Mate on {os.getenv('RENDER_SERVICE_NAME', 'Render')}*
-        """.strip()
-        
-        print("Google Docs export prepared successfully")
-        return jsonify({
-            "success": True,
-            "message": "Text formatted for Google Docs. Copy and paste into a new Google Doc.",
-            "formatted_text": formatted_text,
-            "instructions": "Copy the formatted text above and paste it into a new Google Doc"
-        })
-        
-    except Exception as e:
-        print(f"Error preparing Google Docs export: {e}")
-        return jsonify({"error": f"Failed to prepare Google Docs export: {str(e)}"}), 500
-
-@app.route("/test-notion", methods=["GET"])
-def test_notion():
-    print("Testing Notion integration...")
-    
-    if notion_client is None:
-        return jsonify({"error": "Notion client not initialized"}), 500
-    
-    try:
-        # Try to read the database to test access
-        response = notion_client.databases.retrieve(database_id=NOTION_DATABASE_ID)
-        return jsonify({
-            "success": True,
-            "message": "Notion integration is working!",
-            "database_title": response.get("title", [{}])[0].get("text", {}).get("content", "Unknown")
-        })
-    except Exception as e:
-        print(f"Notion test error: {e}")
-        return jsonify({"error": f"Notion test failed: {str(e)}"}), 500
-
-@app.route("/", methods=["GET"])
-def root():
+@app.route('/', methods=['GET'])
+def index():
+    """Root endpoint"""
     return jsonify({
-        "message": "Whisper API for Render with Export Features",
+        "message": "Minute Mate Whisper API (Render Optimized)",
         "status": "running",
-        "model_loaded": model is not None,
-        "notion_available": notion_client is not None,
-        "features": [
-            "audio_transcription",
-            "notion_export", 
-            "google_docs_export"
+        "endpoints": {
+            "health": "/health",
+            "transcribe": "/transcribe"
+        },
+        "optimizations": [
+            "Memory-optimized for Render free tier",
+            "Uses faster-whisper when available",
+            "CPU-only processing",
+            "Small model (tiny) by default"
         ]
     })
 
 if __name__ == "__main__":
-    # Use environment variables for production deployment
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", 5001))
-    debug = os.getenv("FLASK_ENV") == "development"
-    
-    print(f"Starting Whisper API on {host}:{port}")
-    app.run(host=host, port=port, debug=debug) 
+    # Load models before starting server
+    if load_models():
+        host = os.getenv("HOST", "127.0.0.1")
+        port = int(os.getenv("PORT", 5001))
+        debug = os.getenv("FLASK_ENV") == "development"
+        
+        logger.info(f"Starting Whisper API on {host}:{port}")
+        app.run(host=host, port=port, debug=debug)
+    else:
+        logger.error("Failed to load models. Exiting...")
+        exit(1) 

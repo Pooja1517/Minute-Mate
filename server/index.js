@@ -24,6 +24,40 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Add summarize endpoint before transcribe
+app.post("/summarize", async (req, res) => {
+  const { transcript } = req.body;
+  
+  if (!transcript) {
+    return res.status(400).json({ error: "No transcript provided" });
+  }
+  
+  try {
+    // Simple summarization logic (you can enhance this later)
+    // Get first few sentences instead of just 100 characters
+    const sentences = transcript.split(/[.!?]/).filter(s => s.trim().length > 10);
+    const firstFewSentences = sentences.slice(0, 3).join('. ').trim();
+    const summary = `Meeting Summary: ${firstFewSentences}${firstFewSentences.length > 0 ? '.' : ''}`;
+    
+    // Extract action items using simple keyword detection
+    const actionKeywords = ['will', 'must', 'should', 'need to', 'assign', 'deadline', 'by', 'complete', 'finish', 'prepare', 'send', 'review', 'schedule'];
+    const lines = transcript.split(/[.!?]/);
+    const actionItems = lines
+      .filter(line => actionKeywords.some(keyword => line.toLowerCase().includes(keyword)))
+      .slice(0, 5) // Limit to 5 action items
+      .map(item => item.trim())
+      .filter(item => item.length > 10);
+    
+    res.json({
+      summary: summary,
+      action_items: actionItems.length > 0 ? actionItems : ["No specific action items identified."]
+    });
+  } catch (error) {
+    console.error("Summarization error:", error);
+    res.status(500).json({ error: "Summarization failed" });
+  }
+});
+
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   console.log("=== Transcription Request Received ===");
   console.log("Request headers:", req.headers);
@@ -321,6 +355,21 @@ const notion = new Client({
 });
 
 // Export to Notion
+// Add simple export endpoint for testing
+app.post("/export/test", async (req, res) => {
+  const { transcript, summary, actions } = req.body;
+  
+  res.json({
+    success: true,
+    message: "Export test successful!",
+    data: {
+      transcript_length: transcript ? transcript.length : 0,
+      summary: summary || "No summary",
+      action_items: actions || []
+    }
+  });
+});
+
 app.post("/export/notion", async (req, res) => {
   const { transcript, summary, actions } = req.body;
   

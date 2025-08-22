@@ -1,0 +1,53 @@
+services:
+  # React Frontend Service
+  - type: web
+    name: minute-mate-frontend
+    env: static
+    plan: free
+    buildCommand: cd client && npm ci --only=production && npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false
+      - key: REACT_APP_WHISPER_URL
+        sync: false
+
+  # Node.js Backend Service
+  - type: web
+    name: minute-mate-backend
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_PARENT_PAGE_ID
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: WHISPER_API_URL
+        value: "https://minute-mate-whisper.onrender.com"
+
+  # Python Whisper API Service - Render Optimized
+  - type: web
+    name: minute-mate-whisper
+    env: python
+    plan: free
+    buildCommand: chmod +x build-render-optimized.sh && ./build-render-optimized.sh
+    startCommand: gunicorn -w 1 -k gthread -t 300 -b 0.0.0.0:$PORT --max-requests 1 --max-requests-jitter 1 whisper_render_fix:app
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FLASK_ENV
+        value: "production"
+      - key: WHISPER_MODEL
+        value: "tiny"
+      - key: HOST
+        value: "0.0.0.0"

@@ -3,8 +3,8 @@ import AudioRecorder from "./components/AudioRecorder";
 import TranscriptDashboard from "./components/TranscriptDashboard";
 import "./index.css";
 
-// Simple hardcoded Whisper API URL for local development
-const WHISPER_API_URL = "http://localhost:5001";
+// Use backend URL for all API calls (backend will route to Whisper)
+const BACKEND_URL = "http://localhost:5000";
 
 function App() {
   const [result, setResult] = useState(null);
@@ -15,7 +15,7 @@ function App() {
       // If transcript is present, call summarize endpoint
       console.log("Transcription complete, sending to summarize:", data.text);
       try {
-        const res = await fetch(`${WHISPER_API_URL}/summarize`, {
+        const res = await fetch(`${BACKEND_URL}/summarize`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcript: data.text }),
