@@ -10,7 +10,7 @@ const transcribeAudio = async (filePath) => {
   // Check if running on Render (production) or localhost (development)
   const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
   const whisperApiUrl = isProduction 
-    ? (process.env.WHISPER_API_URL || "https://minute-mate-whisper.onrender.com")
+    ? (process.env.WHISPER_API_URL || "https://minute-mate-1.onrender.com")
     : "http://127.0.0.1:5001";
   
   console.log(`Connecting to Whisper API at: ${whisperApiUrl}`);
