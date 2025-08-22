@@ -38,8 +38,8 @@ services:
     name: minute-mate-whisper
     env: python
     plan: free
-    buildCommand: chmod +x build-stable.sh && ./build-stable.sh
-    startCommand: python whisper_api.py
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn -w 1 -k gthread -t 600 -b 0.0.0.0:$PORT whisper_api:app
     envVars:
       - key: NOTION_TOKEN
         sync: false
@@ -48,4 +48,6 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: FLASK_ENV
-        value: "production" 
+        value: "production"
+      - key: WHISPER_MODEL
+        value: base 

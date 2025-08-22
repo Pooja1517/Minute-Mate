@@ -19,14 +19,15 @@ action_item_extractor = None
 
 print("Starting Whisper API...")
 
-# Load Whisper model - Use base model for Render free tier to reduce memory usage
+# Load Whisper model - model size configurable via env, default to base for Render free tier
 try:
-    print("Loading Whisper model...")
-    model = whisper.load_model("base")  # Changed from "small" to "base" for Render free tier
+    whisper_model_name = os.getenv("WHISPER_MODEL", "base")
+    print(f"Loading Whisper model: {whisper_model_name}...")
+    model = whisper.load_model(whisper_model_name)
     print("Whisper model loaded successfully!")
 except Exception as e:
-    print(f"Error loading Whisper model: {e}")
-    # Fallback to tiny model if base fails
+    print(f"Error loading Whisper model '{os.getenv('WHISPER_MODEL', 'base')}': {e}")
+    # Fallback to tiny model if configured model fails
     try:
         print("Trying tiny model as fallback...")
         model = whisper.load_model("tiny")
