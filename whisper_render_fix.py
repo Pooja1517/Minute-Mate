@@ -4,6 +4,7 @@ import os
 import tempfile
 import logging
 import time
+import gc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,37 +22,58 @@ def load_models():
     global whisper_model, model_type
     
     try:
+        # Force garbage collection before loading models
+        gc.collect()
+        
         # Try to use faster-whisper first (more memory efficient)
         try:
             from faster_whisper import WhisperModel
             model_name = os.getenv("WHISPER_MODEL", "tiny")
             logger.info(f"Loading faster-whisper model: {model_name}")
             
-            # Use CPU and small model for Render free tier
+            # Use CPU and small model for Render free tier with minimal memory usage
             whisper_model = WhisperModel(
                 model_name, 
                 device="cpu", 
                 compute_type="int8",
                 cpu_threads=1,
-                num_workers=1
+                num_workers=1,
+                download_root="/tmp"  # Use temp directory
             )
             model_type = "faster-whisper"
             logger.info("Faster-whisper model loaded successfully!")
             return True
             
         except ImportError:
+            logger.info("faster-whisper not available, trying regular whisper...")
             # Fallback to regular whisper if faster-whisper not available
             import whisper
             model_name = os.getenv("WHISPER_MODEL", "tiny")
             logger.info(f"Loading regular whisper model: {model_name}")
-            whisper_model = whisper.load_model(model_name)
+            
+            # Set environment variables to minimize memory usage
+            os.environ["TOKENIZERS_PARALLELISM"] = "false"
+            
+            whisper_model = whisper.load_model(model_name, download_root="/tmp")
             model_type = "regular-whisper"
             logger.info("Regular whisper model loaded successfully!")
             return True
             
     except Exception as e:
         logger.error(f"Error loading Whisper model: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error details: {str(e)}")
         return False
+
+# Load models on startup
+@app.before_first_request
+def initialize_models():
+    """Load models before first request"""
+    logger.info("Initializing Whisper models...")
+    if not load_models():
+        logger.error("Failed to load Whisper models!")
+    else:
+        logger.info("Whisper models loaded successfully!")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -61,13 +83,21 @@ def health_check():
             "status": "healthy",
             "whisper_model": "loaded",
             "message": "Service is running",
-            "model_type": model_type
+            "model_type": model_type,
+            "endpoints": {
+                "health": "/health",
+                "transcribe": "/transcribe"
+            }
         })
     else:
         return jsonify({
             "status": "unhealthy",
             "whisper_model": "not_loaded",
-            "message": "Models not loaded"
+            "message": "Models not loaded",
+            "endpoints": {
+                "health": "/health",
+                "transcribe": "/transcribe"
+            }
         }), 500
 
 @app.route('/transcribe', methods=['POST'])
@@ -100,63 +130,63 @@ def transcribe_audio():
         logger.info("Starting transcription...")
         start_time = time.time()
         
-        # Use different transcription method based on model type
         if model_type == "faster-whisper":
-            # faster-whisper
+            # Use faster-whisper transcription
             segments, info = whisper_model.transcribe(
                 temp_path,
-                beam_size=1,  # Minimal beam size for memory
-                best_of=1,     # Minimal best_of for memory
-                temperature=0.0,  # Deterministic output
+                language="en",
+                beam_size=1,
+                best_of=1,
+                temperature=0.0,
                 compression_ratio_threshold=2.4,
                 log_prob_threshold=-1.0,
                 no_speech_threshold=0.6,
                 condition_on_previous_text=False,
-                initial_prompt=None
+                initial_prompt=None,
+                word_timestamps=False,
+                prepend_punctuations="\"'"¿([{-",
+                append_punctuations="\"'.。,，!！?？:：")]}、"
             )
             
             # Extract text from segments
-            transcript = " ".join([segment.text for segment in segments])
-            language = info.language if hasattr(info, 'language') else "unknown"
+            transcript_text = " ".join([segment.text for segment in segments])
             
         else:
-            # regular whisper - use compatible parameters
+            # Use regular whisper transcription
             result = whisper_model.transcribe(
                 temp_path,
-                fp16=False,  # Disable fp16 for better compatibility
-                verbose=False,
-                condition_on_previous_text=False,
-                compression_ratio_threshold=2.4,
-                # Remove incompatible parameters for regular whisper
-                language=None,
-                task="transcribe"
+                language="en",
+                task="transcribe",
+                fp16=False,  # Force FP32 for CPU
+                verbose=False
             )
-            transcript = result["text"]
-            language = result.get("language", "unknown")
+            transcript_text = result["text"]
         
         # Clean up temporary file
-        os.unlink(temp_path)
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
         
         transcription_time = time.time() - start_time
-        logger.info(f"Transcription completed in {transcription_time:.2f}s: {len(transcript)} characters")
+        logger.info(f"Transcription completed in {transcription_time:.2f}s: {len(transcript_text)} characters")
         
         return jsonify({
-            "text": transcript,
-            "language": language,
-            "model_used": os.getenv("WHISPER_MODEL", "tiny"),
-            "processing_time": round(transcription_time, 2)
+            "text": transcript_text,
+            "language": "en",
+            "processing_time": f"{transcription_time:.2f}s",
+            "model_type": model_type
         })
         
     except Exception as e:
-        logger.error(f"Transcription error: {e}")
-        
-        # Clean up on error
-        if 'temp_path' in locals() and os.path.exists(temp_path):
-            try:
+        # Clean up temporary file on error
+        try:
+            if 'temp_path' in locals():
                 os.unlink(temp_path)
-            except Exception:
-                pass
-                
+        except:
+            pass
+        
+        logger.error(f"Transcription error: {e}")
         return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
 
 @app.route('/', methods=['GET'])
@@ -178,14 +208,11 @@ def index():
     })
 
 if __name__ == "__main__":
-    # Load models before starting server
+    # Load models immediately when running directly
+    logger.info("Starting Whisper API...")
     if load_models():
-        host = os.getenv("HOST", "127.0.0.1")
-        port = int(os.getenv("PORT", 5001))
-        debug = os.getenv("FLASK_ENV") == "development"
-        
-        logger.info(f"Starting Whisper API on {host}:{port}")
-        app.run(host=host, port=port, debug=debug)
+        logger.info("Starting Whisper API on 127.0.0.1:5001")
+        app.run(host="127.0.0.1", port=5001, debug=False)
     else:
-        logger.error("Failed to load models. Exiting...")
+        logger.error("Failed to load models. Cannot start service.")
         exit(1) 
