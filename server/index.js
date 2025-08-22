@@ -5,13 +5,25 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const FormData = require('form-data');
+const axios = require('axios');
 const { google } = require('googleapis');
 const { Client } = require('@notionhq/client');
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
 
-app.use(cors());
+// Configure CORS to allow requests from Vercel and other origins
+app.use(cors({
+  origin: [
+    'https://minute-mate-omega.vercel.app',
+    'https://minute-mate.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json());
 
 // Health check endpoint
@@ -78,7 +90,6 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
     const formData = new FormData();
     formData.append("audio", fs.createReadStream(filePath), req.file.originalname);
 
-    const axios = require('axios');
     const whisperResponse = await axios.post(
       "https://minute-mate-1.onrender.com/transcribe",
       formData,
