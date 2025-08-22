@@ -36,14 +36,19 @@ except Exception as e:
         print(f"Error loading tiny model: {e2}")
         model = None
 
-# Load summarization model once at startup
-try:
-    print("Loading summarization model...")
-    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
-    print("Summarization model loaded successfully!")
-except Exception as e:
-    print(f"Error loading summarization model: {e}")
-    summarizer = None
+# Load summarization model (optional for memory-constrained environments)
+    try:
+        if os.getenv("ENABLE_SUMMARIZATION", "false").lower() == "true":
+            print("Loading summarization model...")
+            summarization_model = pipeline("summarization", model="facebook/bart-large-cnn")
+            print("Summarization model loaded successfully!")
+        else:
+            print("Summarization disabled to save memory (set ENABLE_SUMMARIZATION=true to enable)")
+            summarization_model = None
+    except Exception as e:
+        print(f"Warning: Could not load summarization model: {e}")
+        print("Continuing without summarization capability...")
+        summarization_model = None
 
 # Use a small T5 model for extracting action items
 # This model is not perfect, but will extract tasks in plain English
@@ -157,7 +162,7 @@ def summarize():
         print("No transcript provided.")
         return jsonify({"error": "No transcript provided"}), 400
     
-    if summarizer is None:
+    if summarization_model is None:
         return jsonify({"error": "Summarization model not loaded. Please check the server logs."}), 500
     
     try:
@@ -167,7 +172,7 @@ def summarize():
         
         # Prompt the summarizer for bullet points and decisions
         prompt = "Summarize the following meeting transcript as bullet points, including key decisions if any:\n" + transcript
-        summary = summarizer(prompt, max_length=80, min_length=10, do_sample=False)[0]['summary_text']
+        summary = summarization_model(prompt, max_length=80, min_length=10, do_sample=False)[0]['summary_text']
         print("Summary generated:", len(summary), "characters")
         
         if not summary.strip():

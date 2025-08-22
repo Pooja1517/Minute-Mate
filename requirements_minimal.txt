@@ -1,0 +1,7 @@
+Flask==2.3.3
+Flask-CORS==4.0.0
+numpy<2.0
+openai-whisper==20231117
+gunicorn==21.2.0
+setuptools==68.2.2
+wheel==0.41.2 
