@@ -4,7 +4,7 @@ const multer = require("multer");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const { transcribeAudio } = require("./whisperService");
+const FormData = require('form-data');
 const { google } = require('googleapis');
 const { Client } = require('@notionhq/client');
 
@@ -72,8 +72,25 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
   const filePath = path.resolve(req.file.path);
   
   try {
-    console.log("Starting transcription...");
-    const result = await transcribeAudio(filePath);
+    console.log("Forwarding to deployed Whisper service...");
+    
+    // Forward the audio file to the deployed Whisper service
+    const formData = new FormData();
+    formData.append("audio", fs.createReadStream(filePath), req.file.originalname);
+
+    const axios = require('axios');
+    const whisperResponse = await axios.post(
+      "https://minute-mate-1.onrender.com/transcribe",
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+        },
+        timeout: 60000, // 60 second timeout
+      }
+    );
+
+    console.log("Whisper service response received:", whisperResponse.data);
     
     // Clean up file
     if (fs.existsSync(filePath)) {
@@ -81,13 +98,7 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
       console.log("Temporary file cleaned up");
     }
     
-    if (!result || !result.transcript) {
-      console.error("No transcript in result:", result);
-      return res.status(500).json({ error: "Transcription failed or returned empty result." });
-    }
-    
-    console.log("Transcription completed successfully, length:", result.transcript.length);
-    res.json({ text: result.transcript });
+    res.json(whisperResponse.data);
   } catch (error) {
     // Clean up file on error
     if (fs.existsSync(filePath)) {
