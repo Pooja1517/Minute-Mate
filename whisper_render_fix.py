@@ -144,8 +144,8 @@ def transcribe_audio():
                 condition_on_previous_text=False,
                 initial_prompt=None,
                 word_timestamps=False,
-                prepend_punctuations="\"'"¿([{-",
-                append_punctuations="\"'.。,，!！?？:：")]}、"
+                prepend_punctuations="\"'([{-",
+                append_punctuations="\"'.!?:;)]}"
             )
             
             # Extract text from segments
