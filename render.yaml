@@ -33,13 +33,13 @@ services:
       - key: FRONTEND_URL
         sync: false
 
-  # Python Whisper API Service - Using stable versions for better compatibility
+  # Python Whisper API Service - Using tiny model for Render free tier
   - type: web
     name: minute-mate-whisper
     env: python
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: gunicorn -w 1 -k gthread -t 600 -b 0.0.0.0:$PORT whisper_api:app
+    startCommand: gunicorn -w 1 -k gthread -t 300 -b 0.0.0.0:$PORT --max-requests 1 --max-requests-jitter 1 whisper_api:app
     envVars:
       - key: NOTION_TOKEN
         sync: false
@@ -50,4 +50,4 @@ services:
       - key: FLASK_ENV
         value: "production"
       - key: WHISPER_MODEL
-        value: base 
+        value: "tiny" # Use tiny model for Render free tier to avoid OOM 

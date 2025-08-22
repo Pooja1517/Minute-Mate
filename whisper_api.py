@@ -21,7 +21,7 @@ print("Starting Whisper API...")
 
 # Load Whisper model - model size configurable via env, default to base for Render free tier
 try:
-    whisper_model_name = os.getenv("WHISPER_MODEL", "base")
+    whisper_model_name = os.getenv("WHISPER_MODEL", "tiny") # Use tiny model for Render free tier to reduce memory usage
     print(f"Loading Whisper model: {whisper_model_name}...")
     model = whisper.load_model(whisper_model_name)
     print("Whisper model loaded successfully!")
